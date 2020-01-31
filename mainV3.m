@@ -48,7 +48,7 @@ for i=1:1:Boat_Num
     Boat_theta = -Boat(i).State(1,3)/180*pi;
     Boat_Speed = Boat(i).State(1,4);
     APF_factor = Boat(i).APF_factor;
-    Boat(i).APF=DrawAPF(Boat_x,Boat_y,Boat_theta,Boat_Speed,MapSize,APF_factor);
+    Boat(i).APF=DrawAPF(Boat_x,Boat_y,Boat_theta,Boat_Speed,MapSize,APF_factor,1);
     
 end
 
@@ -87,11 +87,15 @@ end
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% A*算法开始
-for i=4:1:4
+% valueAPF0=[0.1,0.5,1,2,5,10,50,100];
+
+for i=1:1:1
     start_x = Boat(i).State(1,1)+MapSize(1);
     start_y = Boat(i).State(1,2)+MapSize(2);
+    start_theta = Boat(i).State(1,3)/180*pi;   %起始点艏向，弧度制
     end_x = Boat(i).goal(1,1)+MapSize(1);
     end_y = Boat(i).goal(1,2)+MapSize(2);
+    
     Astar_map=zeros(m,n);
     for k=1:1:Boat_Num
         if k~=i
@@ -101,14 +105,15 @@ for i=4:1:4
     ShipLong=4;
     Movelength=20;  %步长
     SurroundPointsNum=20; %跳整方向数，n向的A*
-    valueAPF=2;  %APF势场的价值函数
+    valueAPF=50;  %APF势场的价值函数
     NodeOpti=0;
-    [posData,courseData,courseData_deg] = AstarMain(Astar_map,start_x,start_y,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize);
+    [posData,courseData,courseData_deg] = AstarMain(Astar_map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize);
+    
     Boat(i).AsPos=posData;
     Boat(i).AsCourse=courseData;
     Boat(i).AsCourse_deg=courseData_deg;
-end
 
+end
 % A*绘制路径%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Astar_map=zeros(m,n);
 for i=1:1:4
@@ -119,19 +124,19 @@ figure
 kk2=contourf(X,Y,Astar_map);  %带填充颜色的等高线图
 colorpan=ColorPanSet(6);
 colormap(colorpan);%定义色盘
-for i=4:1:4
-hold on
-plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
-hold on;
-ship_icon(Boat(i).State(1,1),Boat(i).State(1,2),Boat(i).State(1,5), Boat(i).State(1,6), Boat(i).State(1,3),2 );
-
-AstarCourse=Boat(i).AsCourse_deg-180;
-
-for ii=1:1:length(Boat(i).AsPos)
+for i=1:1:1
+    hold on
+    plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
     hold on;
-    ship_icon(Boat(i).AsPos(ii,1),Boat(i).AsPos(ii,2),Boat(i).State(1,5)/5, Boat(i).State(1,6)/5, AstarCourse(ii),1 );
+    ship_icon(Boat(i).State(1,1),Boat(i).State(1,2),Boat(i).State(1,5)/3, Boat(i).State(1,6)/3, Boat(i).State(1,3),0);
+    
+    for ii=1:1:length(Boat(i).AsPos)
+        hold on;
+        ship_icon(Boat(i).AsPos(ii,1),Boat(i).AsPos(ii,2),Boat(i).State(1,5)/5, Boat(i).State(1,6)/5, Boat(i).AsCourse_deg(ii),1 );
+    end
 end
-end
+title('valueAPF=50')
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 toc
 disp(['本次运行时间: ',num2str(toc)]);

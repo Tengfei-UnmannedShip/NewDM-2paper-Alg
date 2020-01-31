@@ -1,4 +1,4 @@
-function RiskFieldValue = DrawAPF( Boat_x,Boat_y,Boat_theta,Boat_Speed,MapSize,APF_factor )
+function RiskFieldValue = DrawAPF( Boat_x,Boat_y,Boat_theta,Boat_Speed,MapSize,APF_factor,Res )
 %航标参数初始化
 %     Boat_x=Boat.State(i,1);                  %第i个船x坐标
 %     Boat_y=Boat.State(i,2);                  %第i个船y坐标
@@ -7,7 +7,7 @@ function RiskFieldValue = DrawAPF( Boat_x,Boat_y,Boat_theta,Boat_Speed,MapSize,A
 %     Boat_length=Boat.State(i,5);             %第i个船长
 %     Boat_width=Boat.State(i,6);              %第i个船宽
 
-[X,Y]=meshgrid(-MapSize(1):1:MapSize(1),-MapSize(2):1:MapSize(2));
+[X,Y]=meshgrid(-MapSize(1):Res:MapSize(1),-MapSize(2):Res:MapSize(2));
 [m,n]=size(X);
 
 Boat_eta=APF_factor(1);

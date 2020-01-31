@@ -1,4 +1,4 @@
-function [posData,courseData,courseData_deg] = AstarMain(map,start_x,start_y,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize)
+function [posData,courseData,courseData_deg] = AstarMain(map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize)
 %% 算法5:多向A*算法
 %输入: 惩罚图像(矩阵)map,起点图像坐标(start_y,start_x),目标点图像坐标(destination_y, destination_x),船舶长度ShipLong,旋回半斤Rmin
 %输出: 搜索过的点集open列表，被选为最优路径节点的点集close列表
@@ -6,6 +6,7 @@ function [posData,courseData,courseData_deg] = AstarMain(map,start_x,start_y,end
 background=map;
 start_point.x=start_x;
 start_point.y=start_y;
+% 新增起始点艏向start_theta，注意
 destination.x=end_x;
 destination.y=end_y;
 % ShipLong=4;
@@ -25,7 +26,7 @@ if (0<start_point.x<length(background(:,1))&&0<start_point.y<length(background(1
     start_point.H=sqrt((destination.x-start_point.x)^2+(destination.y-start_point.y)^2);  %到目标点的预计代价H
     start_point.F=start_point.G+start_point.H; %总代价F
     start_point.R= Movelength; %下一步移动距离r
-    start_point.Dir=pi/2;  %起始点艏向
+    start_point.Dir=start_theta;  %起始点艏向
     SetOpen(1)=start_point; %起始点坐标
     SetOpen(1).father=nan; %父节点
     SetClose(1)=SetOpen(1); %并将该节点放到open表中,初始化close列表为空；
@@ -149,7 +150,7 @@ posData0=[posData0;flipud(PosTemp)];
 deltaPos=MapSize(1)*ones(size(posData0));
 posData=posData0-deltaPos;
 courseData=[courseData;flipud(courseTemp)];
-courseData_deg=courseData/pi*180+180;
+courseData_deg=courseData/pi*180;
 
 % AstarData=[posData,courseData_deg];
 end
