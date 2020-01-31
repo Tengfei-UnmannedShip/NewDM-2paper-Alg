@@ -18,3 +18,4 @@ Temp3 = power(Temp1/Temp2, e1 /2);
 Temp4 = Tan * Temp3;
 X = K * log(Temp4);
 Y = K * (L-L0);
+end

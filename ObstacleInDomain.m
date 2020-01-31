@@ -1,10 +1,11 @@
-function feasible=ObstacleInDomain(map,row,col,extent)%extent为船舶领域的大小
+function feasible=ObstacleInDomain(map,x,y,extent)
+%extent为船舶领域的大小
+
 [m,n]=size(map);
-if (row-extent<=0||row+extent>=m||col-extent<=0||col+extent>=n)%length(map(1,:))
+if (y-extent<=0||y+extent>=n||x-extent<=0||x+extent>=m)%length(map(1,:))
     feasible = 0;
 else
-    range=map((row-extent):(row+extent),(col-extent):(col+extent));
-    %%%%%%%%%20171124更改%%%%%%%
+    range=map((x-extent):(x+extent),(y-extent):(y+extent));
     [r,c]=size(range);
     total=0;
     for ii=1:r
@@ -14,11 +15,11 @@ else
             end
         end
     end
-%     total=sum(sum(range));
+    %     total=sum(sum(range));
     if(total>0)
         feasible = 0;
     else
         feasible = 1;
     end
 end
-% end
+end

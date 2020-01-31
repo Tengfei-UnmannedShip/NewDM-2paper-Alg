@@ -5,7 +5,6 @@
 % 2.(3.0版本)添加路径点
 % 3.(4.0版本)添加贝叶斯
 
-
 clear all
 clc;
 close all
@@ -15,8 +14,8 @@ MapSize=[300,300];
 GoalRange=MapSize-[15,15];
 [X,Y]=meshgrid(-MapSize(1):1:MapSize(1),-MapSize(2):1:MapSize(2));
 [m,n]=size(X);
-%%==================================================
-%环境船舶参数设置
+% ==================================================
+% 环境船舶参数设置
 % 基本模型参考桥墩计算方法
 % ==================================================
 
@@ -88,7 +87,7 @@ end
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% A*算法开始
-for i=1:1:4
+for i=4:1:4
     start_x = Boat(i).State(1,1)+MapSize(1);
     start_y = Boat(i).State(1,2)+MapSize(2);
     end_x = Boat(i).goal(1,1)+MapSize(1);
@@ -96,7 +95,7 @@ for i=1:1:4
     Astar_map=zeros(m,n);
     for k=1:1:Boat_Num
         if k~=i
-            Astar_map=Astar_map++Boat(k).APF;
+            Astar_map=Astar_map+Boat(k).APF;
         end
     end
     ShipLong=4;
@@ -110,24 +109,29 @@ for i=1:1:4
     Boat(i).AsCourse_deg=courseData_deg;
 end
 
-%% A*绘制路径%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-% figure
-% kk2=contourf(X,Y,Astar_map);  %带填充颜色的等高线图
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% hold on
-% plot(Boat(1).goal(1,1),Boat(1).goal(1,2),'ro','MarkerFaceColor','r');
-% hold on;
-% ship_icon(Boat(1).State(1,1),Boat(1).State(1,2),Boat(1).State(1,5), Boat(1).State(1,6), Boat(1).State(1,3),2 );
-% 
-% AstarCourse=Boat(1).Astar_course-180;
-% 
-% for i=1:1:length(Boat(1).Astar_pos)
-%     hold on;
-%     ship_icon(Boat(1).Astar_pos(i,1),Boat(1).Astar_pos(i,2),Boat(1).State(1,5)/5, Boat(1).State(1,6)/5, AstarCourse(i),1 );
-% end
-% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% A*绘制路径%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Astar_map=zeros(m,n);
+for i=1:1:4
+    Astar_map=Astar_map+Boat(i).APF;
+end
+
+figure
+kk2=contourf(X,Y,Astar_map);  %带填充颜色的等高线图
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+for i=4:1:4
+hold on
+plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
+hold on;
+ship_icon(Boat(i).State(1,1),Boat(i).State(1,2),Boat(i).State(1,5), Boat(i).State(1,6), Boat(i).State(1,3),2 );
+
+AstarCourse=Boat(i).AsCourse_deg-180;
+
+for ii=1:1:length(Boat(i).AsPos)
+    hold on;
+    ship_icon(Boat(i).AsPos(ii,1),Boat(i).AsPos(ii,2),Boat(i).State(1,5)/5, Boat(i).State(1,6)/5, AstarCourse(ii),1 );
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 toc
 disp(['本次运行时间: ',num2str(toc)]);

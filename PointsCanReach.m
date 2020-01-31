@@ -1,8 +1,5 @@
 function feasible=PointsCanReach(r,Rmin,angle,direction)
-% clear all;close all;clc
-% r = 20;
-% Rmin = 20;
-% direction=3*pi/2;
+
 feasible=0;
 if Rmin<r/2
     feasible=1;
