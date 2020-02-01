@@ -19,9 +19,9 @@ GoalRange=MapSize-[15,15];
 % 基本模型参考桥墩计算方法
 % ==================================================
 
-Boat_Num=4;%船舶数量
+Boat_Num=1;%船舶数量
 %观察者位置
-Boat(1).State(1,:)=[   0   220   180     5  30  10];  %船舶状态坐标（x,y,ang,v,l,w）ang为船舶航向 v为速度大小,l为船长，w为船宽
+Boat(1).State(1,:)=[   0     0   135     5  30  10];  %船舶状态坐标（x,y,ang,v,l,w）ang为船舶航向 v为速度大小,l为船长，w为船宽
 Boat(2).State(1,:)=[-200    50   120     5  20   6];  %船舶状态坐标（x,y,ang,v）ang为船舶航向
 Boat(3).State(1,:)=[ 150    70  -120     8  10   3];
 Boat(4).State(1,:)=[ 120  -150   -45    10  20   5];  %ship4是本船
@@ -52,90 +52,74 @@ for i=1:1:Boat_Num
     
 end
 
-% %% APF绘图测试程序%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% figure
-% APF=zeros(m,n);
-% for i=1:1:length(Boat)
-% APF=APF+Boat(i).APF;
-%
-% subplot(4,2,2*i-1)
-% kk1=mesh(X,Y,Boat(i).APF);
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% hold on
-% plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
-%
-% subplot(4,2,2*i)
-% kk2=contourf(X,Y,Boat(i).APF);  %带填充颜色的等高线图
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% hold on
-% plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
-%
-% end
-%
-% figure;
-% subplot(1,2,1)
-% kk1=mesh(X,Y,APF);
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-%
-% subplot(1,2,2)
-% kk2=contourf(X,Y,APF);  %带填充颜色的等高线图
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% A*算法开始
-% valueAPF0=[0.1,0.5,1,2,5,10,50,100];
-
-for i=1:1:1
-    start_x = Boat(i).State(1,1)+MapSize(1);
-    start_y = Boat(i).State(1,2)+MapSize(2);
-    start_theta = Boat(i).State(1,3)/180*pi;   %起始点艏向，弧度制
-    end_x = Boat(i).goal(1,1)+MapSize(1);
-    end_y = Boat(i).goal(1,2)+MapSize(2);
-    
-    Astar_map=zeros(m,n);
-    for k=1:1:Boat_Num
-        if k~=i
-            Astar_map=Astar_map+Boat(k).APF;
-        end
-    end
-    ShipLong=4;
-    Movelength=20;  %步长
-    SurroundPointsNum=20; %跳整方向数，n向的A*
-    valueAPF=50;  %APF势场的价值函数
-    NodeOpti=0;
-    [posData,courseData,courseData_deg] = AstarMain(Astar_map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize);
-    
-    Boat(i).AsPos=posData;
-    Boat(i).AsCourse=courseData;
-    Boat(i).AsCourse_deg=courseData_deg;
-
-end
-% A*绘制路径%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Astar_map=zeros(m,n);
-for i=1:1:4
-    Astar_map=Astar_map+Boat(i).APF;
+%% APF绘图测试程序%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+APF=zeros(m,n);
+for i=1:1:Boat_Num
+    APF=APF+Boat(i).APF;
 end
 
 figure
-kk2=contourf(X,Y,Astar_map);  %带填充颜色的等高线图
+kk1=mesh(X,Y,APF);
 colorpan=ColorPanSet(6);
 colormap(colorpan);%定义色盘
-for i=1:1:1
-    hold on
-    plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
-    hold on;
-    ship_icon(Boat(i).State(1,1),Boat(i).State(1,2),Boat(i).State(1,5)/3, Boat(i).State(1,6)/3, Boat(i).State(1,3),0);
-    
-    for ii=1:1:length(Boat(i).AsPos)
-        hold on;
-        ship_icon(Boat(i).AsPos(ii,1),Boat(i).AsPos(ii,2),Boat(i).State(1,5)/5, Boat(i).State(1,6)/5, Boat(i).AsCourse_deg(ii),1 );
-    end
-end
-title('valueAPF=50')
+
+figure
+kk2=contourf(X,Y,APF);  %带填充颜色的等高线图
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% A*算法开始
+% % valueAPF0=[0.1,0.5,1,2,5,10,50,100];
+% 
+% for i=1:1:1
+%     start_x = Boat(i).State(1,1)+MapSize(1);
+%     start_y = Boat(i).State(1,2)+MapSize(2);
+%     start_theta = Boat(i).State(1,3)/180*pi;   %起始点艏向，弧度制
+%     end_x = Boat(i).goal(1,1)+MapSize(1);
+%     end_y = Boat(i).goal(1,2)+MapSize(2);
+%     
+%     Astar_map=zeros(m,n);
+%     for k=1:1:Boat_Num
+%         if k~=i
+%             Astar_map=Astar_map+Boat(k).APF;
+%         end
+%     end
+%     ShipLong=4;
+%     Movelength=20;  %步长
+%     SurroundPointsNum=20; %跳整方向数，n向的A*
+%     valueAPF=2;  
+%     %APF势场的价值参数,常用的是2，但是有可能会出现路过高风险区域的可能。目前不知道为什么。
+%     NodeOpti=0;
+%     [posData,courseData,courseData_deg] = AstarMain(Astar_map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize);
+%     
+%     Boat(i).AsPos=posData;
+%     Boat(i).AsCourse=courseData;
+%     Boat(i).AsCourse_deg=courseData_deg;
+% 
+% end
+% % A*绘制路径%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Astar_map=zeros(m,n);
+% for i=1:1:4
+%     Astar_map=Astar_map+Boat(i).APF;
+% end
+% 
+% figure
+% kk2=contourf(X,Y,Astar_map);  %带填充颜色的等高线图
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+% for i=1:1:1
+%     hold on
+%     plot(Boat(i).goal(1,1),Boat(i).goal(1,2),'ro','MarkerFaceColor','r');
+%     hold on;
+%     ship_icon(Boat(i).State(1,1),Boat(i).State(1,2),Boat(i).State(1,5)/3, Boat(i).State(1,6)/3, Boat(i).State(1,3),0);
+%     
+%     for ii=1:1:length(Boat(i).AsPos)
+%         hold on;
+%         ship_icon(Boat(i).AsPos(ii,1),Boat(i).AsPos(ii,2),Boat(i).State(1,5)/5, Boat(i).State(1,6)/5, Boat(i).AsCourse_deg(ii),1 );
+%     end
+% end
+% title('valueAPF=20')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 toc
