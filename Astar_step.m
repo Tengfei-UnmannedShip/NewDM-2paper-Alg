@@ -1,4 +1,4 @@
-function [posData,courseData,courseData_deg] = AstarMain(map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize)
+function [posData,courseData,courseData_deg] = Astar_step(step_num,map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize,Res)
 %% 算法5:多向A*算法
 %输入: 惩罚图像(矩阵)map,起点图像坐标(start_y,start_x),目标点图像坐标(destination_y, destination_x),船舶长度ShipLong,旋回半斤Rmin
 %输出: 搜索过的点集open列表，被选为最优路径节点的点集close列表
@@ -127,8 +127,15 @@ while  ~isempty(SetOpen)  %line3.While: open 列表不为空
             end %line16.
         end     %line17.
     end         %line18.
+    if step==step_num
+        result_step=SetClose(end).father;
+        result_step.Dir=ShipDirection(SetClose(end).x,SetClose(end).y,end_x,end_y);
+        step_lable=1;
+        break;
+    end
     
     if SetClose(end).H < ShipSpeed %line19. 如果FMin到目标点的距离小于移动步长，算法结束；
+        step_lable=0;
         break;
     end
 end
@@ -148,13 +155,16 @@ while ~(CurrentPoint.x==start_point.x && CurrentPoint.y==start_point.y)
     CurrentPoint = CurrentPoint.father;    
 end
 
-%栅格坐标转换为实际坐标
-posData0=[posData0;flipud(PosTemp)];
-deltaPos=MapSize(1)*ones(size(posData0));
-posData=posData0-deltaPos;
 courseData=[courseData;flipud(courseTemp)];
 courseData_deg=courseData/pi*180;
 
-% AstarData=[posData,courseData_deg];
+%栅格坐标转换为实际坐标尺度
+posData0=[posData0;flipud(PosTemp)];
+deltaPos=MapSize(1)*ones(size(posData0));
+posData0=posData0-deltaPos;
+
+posData(:,1)=posData0(:,1)*Res-MapSize(1)*1852;
+posData(:,2)=posData0(:,2)*Res-MapSize(2)*1852;
+
 end
 
