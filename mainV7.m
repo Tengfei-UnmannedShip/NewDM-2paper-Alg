@@ -17,7 +17,7 @@ clc
 close all
 tic;%tic1
 %% 初始设置
-MapSize=[8,8];
+MapSize=[10,10];
 GoalRange=MapSize-[1,1];
 Res=100;  %Resolution地图的分辨率
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
@@ -62,7 +62,7 @@ t_count12=0;    %时间计数
 t_count21=0;    %时间计数
 t_count22=0;    %时间计数
 for i=1:1:Boat_Num
-    
+    Boat(i).reach=1; %到达标志，到达目标点时为0，未到达时为1
     Boat(i).SOG = ShipInfo(i,3);                 %speed over ground，第一行为对地速度，单位节
     Boat(i).speed = ShipInfo(i,3)*1852/3600;     %第一行为对地速度，单位米／秒
     Boat(i).COG_deg = ShipInfo(i,4);             %course over ground，第一行为初始航向（deg，正北（Y正向）为0）
@@ -90,19 +90,30 @@ for t=1:60:tMax
     %% 每个时刻的状态更新
     for i=1:1:Boat_Num
         if Boat(i).As_lable~=0
-            Boat(i).As_lable = Boat(i).As_lable+1;
+            
             Current_row=Boat(i).As_lable;
             Boat(i).pos = Boat(i).AsPos(Current_row,:);
             Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
             Boat(i).COG_deg = Boat(i).AsCourse_deg(Current_row,:);
             Boat(i).COG_rad = Boat(i).AsCourse(Current_row,:);
             Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+            Boat(i).As_lable = Boat(i).As_lable+1;
             
         else
             Boat(i).pos = [Boat(i).pos(1)+Boat(i).speed*sind(Boat(i).COG_deg),Boat(i).pos(2)+Boat(i).speed*cosd(Boat(i).COG_deg)];
             Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
             Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
         end
+        
+        if norm(Boat(i).pos-Boat(i).goal)<=Res %本船当前距离在同一个格子里，即认为
+            disp([num2str(t),'时刻',num2str(i),'号船到达目标点']);
+            Boat(i).reach=0;
+        end
+    end
+    if Boat(1).reach==0 && Boat(2).reach==0 && ...
+            Boat(3).reach==0 && Boat(4).reach==0
+        disp([num2str(t),'时刻','所有船到达目标点，计算结束']);
+        break
     end
     
     %% 路径点计算
@@ -119,6 +130,9 @@ for t=1:60:tMax
     
     for OS=1:1:Boat_Num
         k=1;
+        WP_label=[];
+        Dis_temp=[];
+        WayPoint_temp0=[];
         for TS=1:1:Boat_Num
             if TS~=OS
                 v_os = Boat(OS).speed(end,:);
@@ -128,8 +142,8 @@ for t=1:60:tMax
                 course_ts = Boat(TS).COG_deg(end,:);
                 pos_ts = Boat(TS).pos(end,:);
                 TSlength = ShipSize(TS,1);
-                d_thre = 1*1852;  %d_thre为判断碰撞风险的风险阈值
-                changeLabel = 0;
+                d_thre = 1*1852;                % d_thre为判断碰撞风险的风险阈值
+                changeLabel = 0;                % 路径点的距离是否可变
                 % =========================================================================
                 % 先判断有碰撞风险，且需要计算waypoint的
                 % 判断标准：是否有碰撞风险
@@ -141,11 +155,16 @@ for t=1:60:tMax
                     WP_label(k) = TS;
                     % 开始计算waypiont
                     Dis_temp(k) = norm(pos_os-pos_ts);
-                    WayPoint_temp0 = WP_2ship(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,TSlength,changeLabel);
+                    %                     WayPoint_temp0 = WP_2ship(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,TSlength,changeLabel);
+                    WayPoint_temp0 = WP_2ship1(v_ts,course_ts,pos_ts,TSlength);
                     WayPoint(k).WP0=WayPoint_temp0(1:2);   %WP0是船头点
                     WayPoint(k).WP1=WayPoint_temp0(3:4);   %WP1是船尾点
                     k=k+1;
+                else
+                    continue
                 end
+            else
+                continue
             end
         end
         WP_Num = length(WP_label);
@@ -155,6 +174,7 @@ for t=1:60:tMax
             for scenario = 2^WP_Num:1:2^(WP_Num+1)-1   %有WP_Num艘风险船就是2^WP_Num个场景，共有WP_Num位
                 %对每一个场景
                 CAL_temp = dec2bin(scenario);
+                WayPoint_temp1=[];
                 for ts_i=1:1:WP_Num               %按照场景的2进制编码提取出每一艘船在当前场景下的路径点
                     if     CAL_temp(ts_i+1)=='0'     %dec2bin函数输出的是字符，不是数字
                         WayPoint_temp1(ts_i,:) = WayPoint(ts_i).WP0;
@@ -172,6 +192,8 @@ for t=1:60:tMax
                 end
                 kk=kk+1;
             end
+        else
+            WayPoint_OS=[];
         end
         Boat(OS).WayPoint_temp = WayPoint_OS; %这样就得出了在t时刻所有场景的综合waypoint
     end
@@ -190,20 +212,23 @@ for t=1:60:tMax
         WP_label1=Boat(i).curWP_label;
         scenario=CAL_temp1(WP_label1);
         WP_Num=length(Boat(i).curWP_label);
-        
-        switch WP_Num
-            case 1        %只有1艘目标船时
-                lable=scenario(1)+1;
-                Boat(i).WayPoint=Boat(i).WayPoint_temp(lable,:);
-            case 2        %有2艘目标船时
-                lable=2*scenario(1)+scenario(2)+1;
-                Boat(i).WayPoint=Boat(i).WayPoint_temp(lable,:);
-            case 3        %有3艘目标船时
-                lable=4*scenario(1)+2*scenario(2)+scenario(3)+1;
-                disp(['当前为',num2str(i),'号船的场景 ',num2str(lable)]);
-                Boat(i).WayPoint=Boat(i).WayPoint_temp(lable,:);
+        if ~isempty(WP_label1)
+            switch WP_Num
+                case 1        %只有1艘目标船时
+                    lable=scenario(1)+1;
+                    Boat(i).WayPoint=Boat(i).WayPoint_temp(lable,:);
+                case 2        %有2艘目标船时
+                    lable=2*scenario(1)+scenario(2)+1;
+                    Boat(i).WayPoint=Boat(i).WayPoint_temp(lable,:);
+                case 3        %有3艘目标船时
+                    lable=4*scenario(1)+2*scenario(2)+scenario(3)+1;
+                    disp(['当前为',num2str(i),'号船的场景 ',num2str(lable)]);
+                    Boat(i).WayPoint=Boat(i).WayPoint_temp(lable,:);
+            end
+            Boat(i).HisWP = [Boat(i).HisWP;t,Boat(i).WayPoint];
+        else
+            Boat(i).WayPoint=Boat(i).goal;  %没有路径点的时候，直接用终点作为目标点
         end
-        Boat(i).HisWP = [Boat(i).HisWP;Boat(i).WayPoint];
     end
     %% 绘制当前每艘船的SCR
     for i=1:1:Boat_Num
@@ -220,24 +245,43 @@ for t=1:60:tMax
     %% A*算法主程序
     for i=1:1:Boat_Num
         t_count21=t_count22;    %时间计数
-        %       在当前时刻重新计算A*的条件包括：
-        %          1.之前的A*计算结果已经用尽，需要重新计算；
-        %          2.产生的新的路径点距离上一个路径点的相差2个格子以上；
-        %          3.没有新的路径点，路径点变更为目标点
-        if Boat(i).As_lable>=size(Boat(i).AsPos,1)||norm(Boat(i).HisWP(end-1,:)-Boat(i).WayPoint)>=2*Res ...
-                ||isempty(Boat(i).curWP_label)
+        
+        % 在当前时刻重新计算A*的条件包括：
+        %   1.之前的A*计算结果已经用尽，需要重新计算；
+        %   2.产生的新的路径点距离上一个路径点的相差2个格子以上；
+        %   3.没有新的路径点，路径点变更为目标点
+        if size(Boat(i).HisWP,1)>=2   %即不是第一个路径点
+            if  norm(Boat(i).HisWP(end-1,2:3)-Boat(i).WayPoint)>=2*Res
+                Calculate_lable=1;
+            end
+        elseif Boat(i).As_lable>=size(Boat(i).AsPos,1)
+            Calculate_lable=1;
+        elseif isempty(Boat(i).curWP_label)
+            Calculate_lable=1;
+        else
+            Calculate_lable=0;
+        end
+        
+        if Calculate_lable==1
             RiskMap=zeros(m,n);
             for k=1:1:Boat_Num
                 if k~=i
                     RiskMap=RiskMap+Boat(k).SCR;
                 end
             end
-            if  ~isempty(Boat(i).curWP_label)
-                end_x = round((Boat(i).WayPoint(1,1)+MapSize(1)*1852)/Res);
-                end_y = round((Boat(i).WayPoint(1,2)+MapSize(2)*1852)/Res);
-            else
+            
+            % 在当前时刻选择终点作为目标点的情况包括：
+            %   1.当前不存在路径点，即本船的路径点集合为空
+            %   2.路径点距离本船当前位置的距离过近（小于2格）
+            %   3.路径点在本船后面，即认为本船已经经过路径点了
+            theta = vec_ang(Boat(i).pos(end,:),Boat(i).WayPoint,Boat(i).COG_deg);
+            if  isempty(Boat(i).curWP_label) || norm(Boat(i).WayPoint-Boat(i).pos(end,:))<=2*Res ...
+                    || theta>=90
                 end_x = round((Boat(i).goal(1,1)+MapSize(1)*1852)/Res);
                 end_y = round((Boat(i).goal(1,2)+MapSize(2)*1852)/Res);
+            else
+                end_x = round((Boat(i).WayPoint(1,1)+MapSize(1)*1852)/Res);
+                end_y = round((Boat(i).WayPoint(1,2)+MapSize(2)*1852)/Res);
             end
             start_x = round((Boat(i).pos(end,1)+MapSize(1)*1852)/Res);
             start_y = round((Boat(i).pos(end,2)+MapSize(2)*1852)/Res);
@@ -249,14 +293,12 @@ for t=1:60:tMax
             SurroundPointsNum=20; %跳整方向数，n向的A*
             valueAPF=2;  %APF势场的价值函数
             NodeOpti=0;
-            step_num=2000;
+            step_num=1000;
             map=RiskMap;
-            posData = [start_x,start_y];
-            while size(posData,1)<=3
-                step_num=2*step_num;
-                [posData,courseData,courseData_deg] = Astar_step(step_num,map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize,Res);
-            end
-            %% 每次计算完局部A*之后，都会更新为最新的
+            
+            [posData,courseData,courseData_deg] = Astar_step(step_num,map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize,Res);
+            
+            % 每次计算完局部A*之后，都会更新为最新的
             Boat(i).AsPos=posData;
             Boat(i).AsCourse=courseData;
             Boat(i).AsCourse_deg=courseData_deg;

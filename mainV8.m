@@ -20,12 +20,6 @@ clc
 close all
 tic;%tic1
 %% 初始设置
-MapSize=[10,10];
-GoalRange=MapSize-[1,1];
-Res=100;  %Resolution地图的分辨率
-[X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
-[m,n]=size(X);
-
 % =========================================================================
 % 船舶参数设置
 % =========================================================================
@@ -64,6 +58,7 @@ t_count11=0;    %时间计数
 t_count12=0;    %时间计数
 t_count21=0;    %时间计数
 t_count22=0;    %时间计数
+Start_pos=[];
 for i=1:1:Boat_Num
     Boat(i).reach=1; %到达标志，到达目标点时为0，未到达时为1
     Boat(i).SOG = ShipInfo(i,3);                 %speed over ground，第一行为对地速度，单位节
@@ -73,7 +68,19 @@ for i=1:1:Boat_Num
     Boat(i).HisCOG=[Boat(i).COG_rad,Boat(i).COG_deg];
     %由中间位置倒推的初始位置，此处pos单位为米,随后每个时刻新增一行
     Boat(i).pos=[ShipInfo(i,1)-Boat(i).speed*sind(Boat(i).COG_deg)*1250, ShipInfo(i,2)-Boat(i).speed*cosd(Boat(i).COG_deg)*1250];
+    Start_pos = [Start_pos;Boat(i).pos];
     Boat(i).HisPos=Boat(i).pos;
+end
+%地图设置
+MapSize_temp=max(max(abs(Start_pos)))/1852;
+MapSize=[MapSize_temp+0.5,MapSize_temp+0.5];
+GoalRange=MapSize-[1,1];
+Res=100;  %Resolution地图的分辨率
+[X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
+[m,n]=size(X);
+
+%其他决策参数设置
+for i=1:1:Boat_Num
     Boat(i).goal=Goal_point(Boat(i).pos(1,1),Boat(i).pos(1,2),Boat(i).COG_deg,GoalRange*1852); %Boat(i)的初始目标位置，单位为米
     
     Boat(i).WayPoint_temp = [];
@@ -291,7 +298,7 @@ for t=1:60:tMax
             SurroundPointsNum=20; %跳整方向数，n向的A*
             valueAPF=2;  %APF势场的价值函数
             NodeOpti=0;
-            step_num=1000;
+            step_num=-10;     %由于函数的判断是当运行步数step=step_num时终止计算，因此step_num<0，永远不会终止，只会一直算到终点
             map=RiskMap;
             
             [posData,courseData,courseData_deg] = Astar_step(step_num,map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize,Res);

@@ -127,13 +127,14 @@ while  ~isempty(SetOpen)  %line3.While: open 列表不为空
             end %line16.
         end     %line17.
     end         %line18.
+
     if step==step_num
         result_step=SetClose(end).father;
         result_step.Dir=ShipDirection(SetClose(end).x,SetClose(end).y,end_x,end_y);
         step_lable=1;
         break;
     end
-    
+
     if SetClose(end).H < ShipSpeed %line19. 如果FMin到目标点的距离小于移动步长，算法结束；
         step_lable=0;
         break;
