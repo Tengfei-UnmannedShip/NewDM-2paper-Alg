@@ -11,5 +11,8 @@ tic
 toc
 path = paths{:};
 figure(1)
-imageplot(convert_distance_color(Mtotal)); axis image; axis on;
-plot(path(2, :), path(1, :), '-r'); axis on;
+imageplot(convert_distance_color(Mtotal)); 
+axis image; 
+axis on;
+plot(path(2, :), path(1, :), '-r'); 
+axis on;
