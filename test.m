@@ -45,7 +45,7 @@ end
 % MapSize_temp=max(max(abs(Start_pos)))/1852;
 MapSize=[8,8];
 GoalRange=MapSize-[0.5,0.5];
-Res=50;  %Resolution地图的分辨率
+Res=10;  %Resolution地图的分辨率
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 [m,n]=size(X);
 
@@ -98,14 +98,19 @@ for i=1:1:1
      t_count21=toc;
     [Mtotal, paths] = FMM(M, end_point', start_point');
 
-    Boat(i).path = paths{:};
+    path0 = paths{:};
+    
+    path0 =path0';
+    Boat(i).FMpath=path0;
+    posData = zeros(size(path0));
+    posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
+    posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
+    Boat(i).path=posData;
      t_count22=toc;
      disp([num2str(i),'号船计算的运行时间: ',num2str(t_count22-t_count21)]);
 end
  t_count1=toc;
 disp(['总运行时间: ',num2str(t_count1)]);
-figure(1)
-imageplot(convert_distance_color(Mtotal));
-axis image;
-axis on;
-plot(path(2, :), path(1, :), '-r'); axis on;
+
+
+

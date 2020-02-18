@@ -1,4 +1,4 @@
-%% (4.0版本)路径规划算法改用FM算法
+%% (4.1版本)路径规划算法改用FM算法
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
 %   0.1.临近节点优选作为函数的一个选项
@@ -102,7 +102,7 @@ for i=1:1:Boat_Num
     
 end
 
-for t=1:1:tMax
+for t=1:1:1
     t_count11=t_count12;    %时间计数
     
     %% 每个时刻的状态更新
@@ -286,31 +286,23 @@ for t=1:1:tMax
             RiskMap=ones(size(RiskMap))+RiskMap;
             FM_map=1./RiskMap;
             M = FM_map;
-
-            % 在当前时刻选择终点作为目标点的情况包括：
-            %   1.当前不存在路径点，即本船的路径点集合为空
-            %   2.路径点距离本船当前位置的距离过近（小于2格）
-            %   3.路径点在本船后面，即认为本船已经经过路径点了
-          
-            theta = vec_ang(Boat(i).pos(end,:),Boat(i).WayPoint,Boat(i).COG_deg);
-            if  norm(Boat(i).WayPoint-Boat(i).pos(end,:))<=2*Res || theta>=90
-                end_point(1,1) = Boat(i).goal(1,1)+MapSize(1)*1852;
-                end_point(1,2) = Boat(i).goal(1,2)+MapSize(2)*1852;
-            else
-                end_point(1,1) = Boat(i).WayPoint(1,1)+MapSize(1)*1852;
-                end_point(1,2) = Boat(i).WayPoint(1,2)+MapSize(2)*1852;
-            end
-            start_point(1,1)  = Boat(i).pos(1,1)+MapSize(1)*1852;
-            start_point(1,2)  = Boat(i).pos(1,2)+MapSize(2)*1852;
-            start_theta = Boat(i).COG_rad(end,:);   %起始点艏向，弧度制
-            %FM算法的目标点，在每个时刻，添加路径点后，应该首先是路径点，经过路径点后，才是这个最终的目标点
+            
+            start_point(1,1)  = round((Boat(i).pos(1,1)+MapSize(1)*1852)/Res);
+            start_point(1,2)  = round((Boat(i).pos(1,2)+MapSize(2)*1852)/Res);
+            
+            end_point =round((Boat(i).goal+MapSize(1)*1852)/Res);
+            t_count21=toc;
             [Mtotal, paths] = FMM(M, end_point', start_point');
-
-            % 每次计算完局部FM之后，都会更新为最新的
-            Boat(i).FMPos=paths';
-%             Boat(i).FMCourse=courseData;
-%             Boat(i).FMCourse_deg=courseData_deg;
-%             Boat(i).FM_lable=1;     %每次重新计算，都将位置的标识位重新回归1，以后每次加1，知道用完当前的计算
+            
+            path0 = paths{:};
+            path0 =path0';
+            
+%             Boat(i).FMpath=path0;
+            posData = zeros(size(path0));
+            posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
+            posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
+            Boat(i).path=posData;
+            
             t_count22=toc;
             disp([num2str(i),'号船计算的运行时间: ',num2str(t_count22-t_count21)]);
         end
