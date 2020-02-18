@@ -26,9 +26,6 @@ clear
 clc
 close all
 
-addpath('.\simple_sim_without_control_FS','-end');
-addpath('.\toolbox','-end');
-
 tic;%tic1
 %% ≥ı º…Ë÷√
 % =========================================================================

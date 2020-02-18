@@ -155,8 +155,7 @@ end
 % gradient computation
 I = find(A==Inf);
 J = find(A~=Inf);
-A1 = A; 
-A1(I) = mmax(A(J));
+A1 = A; A1(I) = mmax(A(J));
 global grad;
 grad = compute_grad(A1);
 grad = -perform_vf_normalization(grad);

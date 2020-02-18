@@ -73,9 +73,10 @@ for i=1:1:Boat_Num
 end
 %地图设置
 MapSize_temp=max(max(abs(Start_pos)))/1852;
-MapSize=[MapSize_temp+0.5,MapSize_temp+0.5];
+% MapSize=[MapSize_temp+0.5,MapSize_temp+0.5];
+MapSize=[8,8];
 GoalRange=MapSize-[1,1];
-Res=100;  %Resolution地图的分辨率
+Res=10;  %Resolution地图的分辨率
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 [m,n]=size(X);
 
@@ -93,8 +94,8 @@ for i=1:1:Boat_Num
     Boat(i).AsCourse_deg=[];
     
 end
-
-for t=1:60:tMax
+t=1;
+% for t=1:60:tMax
     t_count11=t_count12;    %时间计数
     
     %% 每个时刻的状态更新
@@ -115,15 +116,15 @@ for t=1:60:tMax
             Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
         end
         
-        if norm(Boat(i).pos-Boat(i).goal)<=Res %本船当前距离在同一个格子里，即认为
-            disp([num2str(t),'时刻',num2str(i),'号船到达目标点']);
-            Boat(i).reach=0;
-        end
-    end
-    if Boat(1).reach==0 && Boat(2).reach==0 && ...
-            Boat(3).reach==0 && Boat(4).reach==0
-        disp([num2str(t),'时刻','所有船到达目标点，计算结束']);
-        break
+%         if norm(Boat(i).pos-Boat(i).goal)<=Res %本船当前距离在同一个格子里，即认为
+%             disp([num2str(t),'时刻',num2str(i),'号船到达目标点']);
+%             Boat(i).reach=0;
+%         end
+%     end
+%     if Boat(1).reach==0 && Boat(2).reach==0 && ...
+%             Boat(3).reach==0 && Boat(4).reach==0
+%         disp([num2str(t),'时刻','所有船到达目标点，计算结束']);
+%         break
     end
     
     %% 路径点计算
@@ -247,73 +248,60 @@ for t=1:60:tMax
         
         Boat(i).SCR = ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,2);
     end
-    
-    %% A*算法主程序
-    for i=1:1:Boat_Num
-        t_count21=t_count22;    %时间计数
-        
-        % 在当前时刻重新计算A*的条件包括：
-        %   1.之前的A*计算结果已经用尽，需要重新计算；
-        %   2.产生的新的路径点距离上一个路径点的相差2个格子以上；
-        %   3.没有新的路径点，路径点变更为目标点
-        if size(Boat(i).HisWP,1)>=2   %即不是第一个路径点
-            if  norm(Boat(i).HisWP(end-1,2:3)-Boat(i).WayPoint)>=2*Res
-                Calculate_lable=1;
-            end
-        elseif Boat(i).As_lable>=size(Boat(i).AsPos,1)
-            Calculate_lable=1;
-        elseif isempty(Boat(i).curWP_label)
-            Calculate_lable=1;
-        else
-            Calculate_lable=0;
-        end
-        
-        if Calculate_lable==1
-            RiskMap=zeros(m,n);
-            for k=1:1:Boat_Num
-                if k~=i
-                    RiskMap=RiskMap+Boat(k).SCR;
-                end
-            end
-            
-            % 在当前时刻选择终点作为目标点的情况包括：
-            %   1.当前不存在路径点，即本船的路径点集合为空
-            %   2.路径点距离本船当前位置的距离过近（小于2格）
-            %   3.路径点在本船后面，即认为本船已经经过路径点了
-            theta = vec_ang(Boat(i).pos(end,:),Boat(i).WayPoint,Boat(i).COG_deg);
-            if  norm(Boat(i).WayPoint-Boat(i).pos(end,:))<=2*Res || theta>=90
-                end_x = round((Boat(i).goal(1,1)+MapSize(1)*1852)/Res);
-                end_y = round((Boat(i).goal(1,2)+MapSize(2)*1852)/Res);
-            else
-                end_x = round((Boat(i).WayPoint(1,1)+MapSize(1)*1852)/Res);
-                end_y = round((Boat(i).WayPoint(1,2)+MapSize(2)*1852)/Res);
-            end
-            start_x = round((Boat(i).pos(end,1)+MapSize(1)*1852)/Res);
-            start_y = round((Boat(i).pos(end,2)+MapSize(2)*1852)/Res);
-            start_theta = Boat(i).COG_rad(end,:);   %起始点艏向，弧度制
-            %A*算法的目标点，在每个时刻，添加路径点后，应该首先是路径点，经过路径点后，才是这个最终的目标点
-            
-            ShipLong=2*round(ShipSize(i,1)/Res/2);     %船长先除以2取整再乘2是为了程序中用到ShipLong/2时,也可以保证为整数
-            Movelength=round((Boat(i).speed(end,:)*60)/Res);  %步长,每分钟行进距离
-            SurroundPointsNum=20; %跳整方向数，n向的A*
-            valueAPF=2;  %APF势场的价值函数
-            NodeOpti=0;
-            step_num=-10;     %由于函数的判断是当运行步数step=step_num时终止计算，因此step_num<0，永远不会终止，只会一直算到终点
-            map=RiskMap;
-            
-            [posData,courseData,courseData_deg] = Astar_step(step_num,map,start_x,start_y,start_theta,end_x,end_y,ShipLong,Movelength,SurroundPointsNum,valueAPF,NodeOpti,MapSize,Res);
-            
-            % 每次计算完局部A*之后，都会更新为最新的
-            Boat(i).AsPos=posData;
-            Boat(i).AsCourse=courseData;
-            Boat(i).AsCourse_deg=courseData_deg;
-            Boat(i).As_lable=1;     %每次重新计算，都将位置的标识位重新回归1，以后每次加1，知道用完当前的计算
-            t_count22=toc;
-            disp([num2str(i),'号船计算',num2str(step_num),'步的运行时间: ',num2str(t_count22-t_count21)]);
-        end
-    end
-    t_count12=toc;    %时间计数
-    disp([num2str(t),'时刻的运行时间: ',num2str(t_count12-t_count11)]);
+%% 用于FM的SCR
+% 要求：1.风险越大，值越小??所有的SCR+1；
+%      2.然后取倒数
+SCR_temp=zeros(m,n);
+for  i=1:1:Boat_Num
+    SCR_temp=SCR_temp+Boat(i).SCR;
 end
+FM_temp=SCR_temp+1;
+FM_map=1./FM_temp;
+
+figure
+kk1=mesh(X,Y,SCR_temp);
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0 150])
+set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+grid on;
+xlabel('\it n miles', 'Fontname', 'Times New Roman');
+ylabel('\it n miles', 'Fontname', 'Times New Roman');
+title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
+box off;
+
+figure
+kk2=mesh(X,Y,FM_map);
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0 1])
+set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+grid on;
+xlabel('\it n miles', 'Fontname', 'Times New Roman');
+ylabel('\it n miles', 'Fontname', 'Times New Roman');
+title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
+box off;
+
+figure
+kk3=contourf(X,Y,FM_map);  %带填充颜色的等高线图
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+grid on;
+xlabel('\it n miles', 'Fontname', 'Times New Roman');
+ylabel('\it n miles', 'Fontname', 'Times New Roman');
+title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
+box off;
+% end
 t3=toc;
 disp(['本次运行总时间: ',num2str(t3)]);
