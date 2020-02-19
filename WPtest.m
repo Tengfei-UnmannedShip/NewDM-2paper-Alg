@@ -1,0 +1,1 @@
+Boat(OS).WP_data = [Boat(OS).WP_data;t_wp,WayPoint_OS]
