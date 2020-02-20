@@ -16,7 +16,7 @@ function path = compute_geodesic(D, x, options)
 
 
 options.null = 0;
-method = getoptions(options, 'method', 'continuous'); 
+method = getoptions(options, 'method', 'continuous');
 
 if strcmp(method, 'discrete')
     path = compute_discrete_geodesic(D,x);
@@ -40,6 +40,13 @@ if size(D,3)>1
     path = extract_path_3d(D,x,options);
 else
     % 2D
+%     path = extract_path_2d(A,end_points,options)
+
+% extract_path_2d - extract the shortest path using
+%   a gradient descent.
+%   path = extract_path_2d(D,end_point,options);
+%   'D' is the distance function.
+%   'end_point' is ending point (should be integer).
     path = extract_path_2d(D,x,options);
 end
 
@@ -90,7 +97,7 @@ while true
     x0 = path(:,end);
     x = repmat(x0,1,size(d,2))+d;
     if nd==2
-        I = find(x(1,:)>0 & x(2,:)>0 & x(1,:)<=s(1) & x(2,:)<=s(2) );    
+        I = find(x(1,:)>0 & x(2,:)>0 & x(1,:)<=s(1) & x(2,:)<=s(2) );
     else
         I = find(x(1,:)>0 & x(2,:)>0 & x(3,:)>0 & x(1,:)<=s(1) & x(2,:)<=s(2) & x(3,:)<=s(3) );
     end
@@ -116,13 +123,13 @@ end
 
 function path = extract_path_2d(A,end_points,options)
 
-% extract_path_2d - extract the shortest path using 
+% extract_path_2d - extract the shortest path using
 %   a gradient descent.
 %
 %   path = extract_path_2d(D,end_point,options);
 %
 %   'D' is the distance function.
-%   'end_point' is ending point (should be integer). 
+%   'end_point' is ending point (should be integer).
 %
 %   Copyright (c) 2004 Gabriel Peyr?
 options.null = 0;
@@ -155,7 +162,7 @@ end
 % gradient computation
 I = find(A==Inf);
 J = find(A~=Inf);
-A1 = A; 
+A1 = A;
 A1(I) = mmax(A(J));
 
 global grad;
@@ -164,6 +171,7 @@ grad = -perform_vf_normalization(grad);
 
 % path extraction
 path = stream2(grad(:,:,2),grad(:,:,1),end_points(2,:),end_points(1,:), str_options);
+% stream2函数用于计算二维流线图数据
 for i=1:length(path)
     path{i} = path{i}(:,2:-1:1);
 end
@@ -259,7 +267,7 @@ n = length(gx);
 % down/left corner of current cell
 p = floor(y(1));
 q = floor(y(2));
-    
+
 p = clamp(p,1,n-1);
 q = clamp(q,1,n-1);
 
@@ -270,11 +278,11 @@ yy = y(2)-q;
 xx = clamp(xx,0,1);
 yy = clamp(yy,0,1);
 
-% compute gradient    
+% compute gradient
 a = [gx(p,q), gy(p,q)];
 b = [gx(p+1,q), gy(p+1,q)];
 c = [gx(p,q+1), gy(p,q+1)];
-d = [gx(p+1,q+1), gy(p+1,q+1)];     
+d = [gx(p+1,q+1), gy(p+1,q+1)];
 g = ( a*(1-xx)+b*xx )*(1-yy) + ( c*(1-xx)+d*xx )*yy;
 g = -g';
 
@@ -285,13 +293,13 @@ g = -g';
 
 function path = extract_path_3d(A,end_points,options)
 
-% extract_path_3d - extract the shortest path using 
+% extract_path_3d - extract the shortest path using
 %   a gradient descent.
 %
 %   path = extract_path_3d(A,x,options);
 %
 %   'A' is the distance function.
-%   'x' is starting point (should be integer). 
+%   'x' is starting point (should be integer).
 %
 %   Copyright (c) 2004 Gabriel Peyr?
 
@@ -322,7 +330,7 @@ gx = gx./d; gy = gy./d; gz = gz./d;
 options = [0.2 20000];
 path = stream3(-gy,-gx,-gz,end_points(2,:),end_points(1,:),end_points(3,:), options);
 for i=1:length(path)
-     path{i} = path{i}(:,[2:-1:1 3]);
+    path{i} = path{i}(:,[2:-1:1 3]);
 end
 if length(path)==1
     path = path{1};

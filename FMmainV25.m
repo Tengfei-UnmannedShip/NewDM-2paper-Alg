@@ -22,8 +22,6 @@
 %       步骤2：考虑CAL的作用？当前是固定CAL，在动态CAL下，会变成什么样呢？
 % 4.(5.0版本)加入贝叶斯推断的内容
 
-
-
 clear
 clc
 close all
@@ -41,12 +39,20 @@ shipLabel=[
     1 0
     1 0];
 %1~2位置(中间的位置，不是起始位置)、3航速(节)、4初始航向（deg，正北为0），5决策周期时长，6检测范围（range，nm）
+%交叉相遇场景设置
 ShipInfo=[
-    0.0,  0.0,  18,    0,  3,  6
-    0.0,  0.0,  13,    0,  4,  6
-    0.0,  0.0,  16,  300,  5,  6
-    0.0,  0.0,  13,  135,  5,  6
+    0.0, 0.0,  18,    0,    3,  6
+    0.0, 0.0,  18,  230,    4,  6
+    0.0, 0.0,  16,  300,    5,  6
+    0.0, 0.0,  13,  135,    5,  6
     ];
+% % 追越场景设置
+% ShipInfo=[
+%     0.0,  0.0,  18,    0,  3,  6
+%     0.0,  0.0,  13,    0,  4,  6
+%     0.0,  0.0,  16,  300,  5,  6
+%     0.0,  0.0,  13,  135,  5,  6
+%     ];
 
 ShipSize = [
     250, 30
@@ -84,8 +90,8 @@ end
 %地图设置
 % MapSize_temp=max(max(abs(Start_pos)))/1852;
 MapSize=[8,8];
-GoalRange=MapSize-[0.5,0.5];
-Res=10;  %Resolution地图的分辨率
+GoalRange=MapSize-[0.75,0.75];
+Res=50;  %Resolution地图的分辨率
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 [m,n]=size(X);
 
@@ -102,18 +108,19 @@ for i=1:1:Boat_Num
     Boat(i).FMPos=[];
     Boat(i).FMCourse=[];
     Boat(i).FMCourse_deg=[];
+    Boat(i).Current_row=0;
     
 end
 
-for t=1:1:tMax
+for t=1:1:2500
     t_count11=t_count12;    %时间计数
     
     %% 每个时刻的状态更新
     for i=1:1:Boat_Num
-        if Boat(i).FM_lable~=0  %即已经开始决策了，此时按照决策来
+        if Boat(i).FM_lable~=0 && Boat(i).reach==1 %即已经开始决策但没有到终点，此时按照决策来
             pos_temp=0;
             row=Boat(i).Current_row;
-            while pos_temp>Boat(i).speed
+            while pos_temp<Boat(i).speed
                 
                 delta_pos0=Boat(i).path(row+1,:)-Boat(i).path(row,:);
                 delta_pos=norm(delta_pos0);
@@ -121,21 +128,29 @@ for t=1:1:tMax
                 row=row+1;
                 
             end
-            Boat(i).Current_row=row;
-            Boat(i).pos = Boat(i).path(Current_row,:);
+            
+            Boat(i).pos = Boat(i).path(row,:);
             Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
-            Boat(i).COG_deg = Boat(i).FMCourse_deg(Current_row,:);
-            Boat(i).COG_rad = Boat(i).FMCourse(Current_row,:);
-            Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+            %             Boat(i).COG_deg = Boat(i).FMCourse_deg(row,:);
+            %             Boat(i).COG_rad = Boat(i).FMCourse(row,:);
+            %             Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+            Boat(i).Current_row=row;
             
+        elseif Boat(i).reach==0  %已经到达终点
+            Boat(i).pos = Boat(i).pos;
+            Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
+            %             Boat(i).COG_deg = Boat(i).COG_deg;
+            %             Boat(i).COG_rad = Boat(i).COG_rad;
+            %             Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
             
-        else  %没有决策过的状态
+        elseif Boat(i).FM_lable==0  %没有决策过的状态
+            
             Boat(i).pos = [Boat(i).pos(1)+Boat(i).speed*sind(Boat(i).COG_deg),Boat(i).pos(2)+Boat(i).speed*cosd(Boat(i).COG_deg)];
             Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
-            Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+            %             Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
         end
         
-        if norm(Boat(i).pos-Boat(i).goal)<=Res %本船当前距离在同一个格子里，即认为本船到达目标点
+        if norm(Boat(i).pos-Boat(i).goal)<=2*Res %本船当前距离在同一个格子里，即认为本船到达目标点
             disp([num2str(t),'时刻',num2str(i),'号船到达目标点']);
             Boat(i).reach=0;
         end
@@ -147,8 +162,9 @@ for t=1:1:tMax
     end
     
     for OS=1:1:Boat_Num
-        
-        if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 %判断当前i时刻是在j船的决策周期中且compliance==1即本船正常
+        %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
+        if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
+                && Boat(i).reach==1
             disp([num2str(t),'时刻',num2str(OS),'船开始决策']);
             t_count21=t_count22;    %时间计数
             %% 路径点计算
@@ -162,7 +178,9 @@ for t=1:1:tMax
             WP_label=[];
             WayPoint_temp0=[];
             Risk_temp=[];
-            k=1;
+            Dis_temp=[];
+            Dis_risk=[];
+            k=1;k1=1;
             for TS=1:1:Boat_Num
                 if TS~=OS
                     v_os = Boat(OS).speed(end,:);
@@ -180,9 +198,8 @@ for t=1:1:tMax
                     % 注意：可能出现原来试验中本来应该已经过去，但是预测路径汇聚在诡异的船头一点的情况
                     % 当时推测是由于试验的数据不是A*算出来的数据的原因，这次再试一试，不要掉以轻心
                     % =========================================================================
-                    CurrentRisk=CollisionRisk(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,d_thre);
-                    if CurrentRisk==1  %即的确有碰撞风险
-                        WP_label(k) = TS;
+                    if CollisionRisk(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,d_thre)  %即的确有碰撞风险
+                        WP_label(k1) = TS;
                         % 开始计算waypiont
                         CPA_temp=computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
                         
@@ -198,32 +215,41 @@ for t=1:1:tMax
                         else
                             CurrentRisk=0;
                         end
-                        Dis_temp=norm(pos_os-pos_ts);
+                        
+                        Dis_risk=norm(pos_os-pos_ts);
+                        Dis_temp=[Dis_temp,Dis_risk];
                         
                         %计算当前的目标船、有无风险、TCPA、DCPA、两船间的距离
-                        Risk_temp(k,:) = [TS,CurrentRisk, TCPA_temp,DCPA_temp,Dis_temp];
+                        Risk_temp(k,:) = [TS,CurrentRisk, TCPA_temp,DCPA_temp,Dis_risk];
                         WayPoint_temp0 = WP_2ship(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,TSlength,changeLabel);
-                        WayPoint(k).WP0=WayPoint_temp0(1:2);   %WP0是船头点
-                        WayPoint(k).WP1=WayPoint_temp0(3:4);   %WP1是船尾点
-                        k=k+1;
+                        WayPoint(k1).WP0=WayPoint_temp0(1:2);   %WP0是船头点
+                        WayPoint(k1).WP1=WayPoint_temp0(3:4);   %WP1是船尾点
+                        k1=k1+1;
+                    else
+                       Risk_temp(k,:) = [TS,0, 0,0,0]; 
+                        
                     end
+                    k=k+1;
+                    
                 end
             end
             WP_Num = length(WP_label);
-            TCPA_OS=sum(Risk_temp(:,3));
-            DCPA_OS=sum(Risk_temp(:,4));
-            Dis_OS=sum(Risk_temp(:,5));
             Risk_OS=Risk_temp;
-            
-            Risk_OS(:,3)=TCPA_OS./Risk_temp(:,3);
-            Risk_OS(:,4)=DCPA_OS./Risk_temp(:,4);
-            Risk_OS(:,5)=Dis_OS./Risk_temp(:,5);
-            %这里的目的是找到风险最大的值，采用的方法是综合法，TCPA最紧迫，然后Dis，然后是DCPA，
-            %用100、10、1作为系数区分开，但是不知道效果如何，需要进一步的调试
-            Risk_value=Risk_OS(:,2).*(100*Risk_OS(:,3)+10*Risk_OS(:,5)+Risk_OS(:,4));
-            
+            if WP_Num==3
+                TCPA_OS=sum(Risk_temp(:,3));
+                DCPA_OS=sum(Risk_temp(:,4));
+                Dis_OS=sum(Risk_temp(:,5));
+                
+                Risk_OS(:,3)=TCPA_OS./Risk_temp(:,3);
+                Risk_OS(:,4)=DCPA_OS./Risk_temp(:,4);
+                Risk_OS(:,5)=Dis_OS./Risk_temp(:,5);
+                %这里的目的是找到风险最大的值，采用的方法是综合法，TCPA最紧迫，然后Dis，然后是DCPA，
+                %用100、10、1作为系数区分开，但是不知道效果如何，需要进一步的调试
+                Risk_value=Risk_OS(:,2).*(100*Risk_OS(:,3)+10*Risk_OS(:,5)+Risk_OS(:,4));
+            end
             kk = 1;
             WayPoint_temp1 = [];
+            WayPoint_OS = [];
             for scenario = 2^WP_Num:1:2^(WP_Num+1)-1   %有WP_Num艘风险船就是2^WP_Num个场景，共有WP_Num位
                 CAL_temp = dec2bin(scenario);
                 for ts_i=1:1:WP_Num               %按照场景的2进制编码提取出每一艘船在当前场景下的路径点
@@ -247,21 +273,7 @@ for t=1:1:tMax
             [m_wp,n_wp] = size(WayPoint_OS);
             t_wp=t*ones(m_wp,1);
             Boat(OS).WP_data = [Boat(OS).WP_data;t_wp,WayPoint_OS]; %这样就得出了在t时刻所有场景的综合waypoint
-            Boat(OS).WayPoint = WayPoint_OS;
-            
-            TCPA_OS=sum(Risk_temp(:,3));
-            DCPA_OS=sum(Risk_temp(:,4));
-            Dis_OS=sum(Risk_temp(:,5));
-            Risk_OS=Risk_temp;
-            
-            Risk_OS(:,3)=TCPA_OS./Risk_temp(:,3);
-            Risk_OS(:,4)=DCPA_OS./Risk_temp(:,4);
-            Risk_OS(:,5)=Dis_OS./Risk_temp(:,5);
-            %这里的目的是找到风险最大的值，采用的方法是综合法，TCPA最紧迫，然后Dis，然后是DCPA，
-            %用100、10、1作为系数区分开，但是不知道效果如何，需要进一步的调试
-            Risk_OS(:,2)=Risk_OS(:,2).*(100*Risk_OS(:,3)+10*Risk_OS(:,5)+Risk_OS(:,4));
-            Boat(OS).Risk=Risk_OS;
-            Boat(OS).WayPoint_temp = WayPoint; %这样就得出了在t时刻所有场景的综合waypoint
+            Boat(OS).WayPoint_temp = WayPoint_OS;
             
             %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
             
@@ -270,33 +282,37 @@ for t=1:1:tMax
                 Boat(OS).CAL=CAL0(OS,:);
             elseif  shipLabel(OS,2)==1
                 % 贝叶斯推测
-                
                 Boat(OS).CAL=CAL0(OS,:); %贝叶斯推断最后得出的，还是当前时刻的Boat(i).CAL
             end
-            WayPoint_temp=[];
-            Risk_level=0;
             k=1;
+            Real_CAL=[];
             for TS=1:1:Boat_Num
                 if TS~=OS
-                    if Boat(OS).Risk(k,2)~=0
-                        if Boat(OS).Risk(k,2)>Risk_level
-                            Risk_level=Boat(OS).Risk(k,2);
-                            if Boat(OS).CAL(TS)==0
-                                WayPoint_temp=Boat(OS).WayPoint_temp(k).WP0;
-                            elseif Boat(OS).CAL(TS)==1
-                                WayPoint_temp=Boat(OS).WayPoint_temp(k).WP1;
-                            end
-                        end
+                    if Risk_OS(k,2)==1
+                        Real_CAL= [Real_CAL,Boat(OS).CAL(TS)];
                     end
-                else
-                    continue
+                    k=k+1;
                 end
-                k=k+1;
             end
-            if isempty(WayPoint_temp)
+            if isempty(Real_CAL)
                 Boat(OS).WayPoint=Boat(OS).goal;  %没有路径点的时候，直接用终点作为目标点
+                disp([num2str(OS),'船目标点为终点']);
             else
-                Boat(OS).WayPoint=WayPoint_temp;
+                CAL_row=[];
+                switch WP_Num
+                    case 1
+                        CAL_row=Real_CAL+1;
+                        disp([num2str(OS),'船有1艘风险船，场景为',num2str(Real_CAL)]);
+                    case 2
+                        CAL_row=2^Real_CAL(1)+Real_CAL(2)+1;
+                        disp([num2str(OS),'船有2艘风险船，场景为',num2str(Real_CAL)]);
+                    case 3
+                        CAL_row=4^Real_CAL(1)+2^Real_CAL(2)+Real_CAL(3)+1;
+                        disp([num2str(OS),'船有3艘风险船，场景为',num2str(Real_CAL)]);
+                end
+                % 判断当前的路径点是否在地图范围内，不在的话，新路径点为原路径点与本船位置连线与边界的交点
+                WP_test0=Boat(OS).WayPoint_temp(CAL_row,:);
+                Boat(OS).WayPoint=WP_regiontest(WP_test0,MapSize,Boat(OS).pos);
             end
             Boat(OS).HisWP = [Boat(OS).HisWP;t,Boat(OS).WayPoint];
             
@@ -337,13 +353,29 @@ for t=1:1:tMax
                 FM_map=1./RiskMap;
                 
                 %% FM算法主程序
-                start_point(1,1)  = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
-                start_point(1,2)  = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
+                start_point(1,1) = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
+                start_point(1,2) = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
                 
-                end_point =round((Boat(OS).WayPoint+MapSize(1)*1852)/Res);
+                end_point(1,1) =round((Boat(OS).WayPoint(1,1)+MapSize(1)*1852)/Res);
+                end_point(1,2) =round((Boat(OS).WayPoint(1,2)+MapSize(2)*1852)/Res);
+                
+                %当起始点或终点到边界处时，认为在内部
+                if start_point(1,1)>m
+                    start_point(1,1)=m;
+                end
+                if start_point(1,2)>n
+                    start_point(1,2)=n;
+                end
+                if end_point(1,1)>m
+                    end_point(1,1)=m;
+                end
+                if end_point(1,2)>n
+                    end_point(1,2)=n;
+                end
+                
                 t_count21=toc;
                 [Mtotal, paths] = FMM(FM_map, end_point', start_point');
-                
+                Boat(OS).FM_lable=Boat(OS).FM_lable+1;
                 path0 = paths{:};
                 path0 =path0';
                 
