@@ -1,4 +1,5 @@
 function [map, paths] = FMM(W, start_points, end_points)
+% FMM主程序，用于路径规划的Fast Matching程序
 map = [];
 paths = {};
 if nargin==0

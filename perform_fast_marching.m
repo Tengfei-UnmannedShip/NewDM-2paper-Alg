@@ -1,5 +1,5 @@
 function [D,S,Q] = perform_fast_marching(W, start_points, options)
-
+% 以2D或3D启动的Fast Marching快速行进算法。
 % perform_fast_marching - launch the Fast Marching algorithm, in 2D or 3D.
 %
 %   [D,S,Q] = perform_fast_marching(W, start_points, options)

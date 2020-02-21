@@ -1,4 +1,4 @@
-function SCR = ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,k )
+function SCR = ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,k )
 %% 来自Ning Wang的基本SCR的船舶领域模型，注意原文中XY轴是颠倒的
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 r0 = 0.5;
@@ -17,7 +17,7 @@ BoatX = (X-Boat_x)*cos(Boat_theta)+(Y-Boat_y)*sin(Boat_theta);
 BoatY = (Y-Boat_y)*cos(Boat_theta)-(X-Boat_x)*sin(Boat_theta);
 
 %注意原文中XY轴颠倒，本质是XY轴代表的四个方向的R = [Rfore Raft Rstarb Rport]的顺序
-SCR= 100*exp(-(2*BoatX./((1+sign(BoatX))*Sigma(3)+(1-sign(BoatX))*Sigma(4))).^k-(2*BoatY./((1+sign(BoatY))*Sigma(1)+(1-sign(BoatY))*Sigma(2))).^k);
+SCR= PeakValue*exp(-(2*BoatX./((1+sign(BoatX))*Sigma(3)+(1-sign(BoatX))*Sigma(4))).^k-(2*BoatY./((1+sign(BoatY))*Sigma(1)+(1-sign(BoatY))*Sigma(2))).^k);
 
 end
 

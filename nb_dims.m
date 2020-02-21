@@ -1,15 +1,16 @@
 function d = nb_dims(x)
-
+% ndimsº¯ÊıµÄµ÷ÊÔµ÷ÓÃº¯Êı
 % nb_dims - debugged version of ndims.
 %
 %   d = nb_dims(x);
 %
-%   Copyright (c) 2004 Gabriel Peyré
+%   Copyright (c) 2004 Gabriel Peyr?
 
 if isempty(x)
     d = 0;
     return;
 end
+% ndimsÏµÍ³º¯Êı£¬·µ»ØÏòÁ¿µÄÎ¬¶È
 
 d = ndims(x);
 
