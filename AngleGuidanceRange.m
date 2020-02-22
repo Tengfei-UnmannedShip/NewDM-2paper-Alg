@@ -6,7 +6,7 @@ function AGRmap = AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,Shiplength,
 [m,n]=size(X);
 AGR_Dis=zeros(m,n);
 AGRmap=zeros(m,n);
-R=2.0*Shiplength;        %外圆半径为2倍船长
+R=20*Shiplength;        %外圆半径为2倍船长
 r=0.2*Shiplength;        %内圆半径为0.5倍船长
 
 %把计算势场点坐标（X,Y）变换到船舶坐标系下点（BoatX,BoatY）

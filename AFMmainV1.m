@@ -176,7 +176,7 @@ for t=1:1:2500
         break
     end
     
-    for OS=1:1:Boat_Num
+    for OS=1:1:1    %Boat_Num
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
                 && Boat(i).reach==1
@@ -204,38 +204,64 @@ for t=1:1:2500
                 %% 建立本船的航行场
                 % 绘制当前本船眼中目标船的SCR
                 t_count31=toc;    %时间计数
-                ScenarioMap=ones(m,n);
-                SCR_temp=zeros(m,n);
+                                        SCR_temp=zeros(m,n);
+                        CAL_Field=zeros(m,n);
+                        ScenarioMap=zeros(m,n);
                 PeakValue=100;
                 for TS=1:1:Boat_Num
                     if TS~=OS
+
                         Boat_x = Boat(TS).pos(end,1);
                         Boat_y = Boat(TS).pos(end,2);
                         Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
                         Boat_Speed = Boat(TS).SOG(end,:);
                         Shiplength = ShipSize(TS,1);
                         
-                        SCR_temp = ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
+                        SCR_temp= ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
                         
                         %计算避碰规则下的风险场，规则场RuleField
                         CAL=Boat(OS).CAL(TS);
-                        CAL_Field = RuleField( Boat_x,Boat_y,Boat_theta,Shiplength,MapSize,Res,PeakValue,CAL);
-                        
+                        CAL_Field= RuleField( Boat_x,Boat_y,Boat_theta,Shiplength,MapSize,Res,PeakValue,CAL);
                         ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
                         
                     end
                 end
-                % 绘制当前本船的航行遮罩，
+
                 
-                %                 ?Require: planning space (M), start point (pstart), end point (pend), heading angle (?), turning angle (#), range distance (d)
+                % 绘制当前本船的航行遮罩
                 Boat_x=Boat(OS).pos(1,1);
-                Boat_y=Boat(OS).pos(1,1);
+                Boat_y=Boat(OS).pos(1,2);
                 Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
                 Shiplength = ShipSize(OS,1);
                 alpha=30;
-                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,Shiplength,MapSize,Res,PeakValue);
-                ScenarioMap=1+AFMfiled+ScenarioMap;
+                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,Shiplength,MapSize,Res,200);
+                ScenarioMap=ScenarioMap+AFMfiled;
                 
+                %     %% 绘图测试
+                %     figure;
+                %     kk1=mesh(X,Y,Scenario);
+                %     colorpan=ColorPanSet(6);
+                %     colormap(colorpan);%定义色盘
+                %     hold on
+                %     plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+                %     hold on;
+                %     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                %     axis equal
+                %     axis off
+                %     %     surf(X,Y,APFValue);
+                %
+                %     figure
+                %     % kk2=pcolor(APFValue);
+                %     kk2=contourf(X,Y,Scenario);  %带填充颜色的等高线图
+                %     colorpan=ColorPanSet(6);
+                %     colormap(colorpan);%定义色盘
+                %     % set(kk2, 'LineStyle','none');
+                %     hold on
+                %     plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+                %     hold on
+                %     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                %     % axis equal
+                %     % axis off
                 FM_map=1./ScenarioMap;
                 t_count32=toc;
                 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);

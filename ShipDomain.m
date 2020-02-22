@@ -5,10 +5,10 @@ r0 = 0.5;
 k_AD = 10^(0.3591*log10(Boat_Speed)+0.0952);
 k_DT = 10^(0.5441*log10(Boat_Speed)-0.0795);
 
-Rfore = (1+1.34*sqrt(k_AD^2+0.25*k_DT^2))*Shiplength;
-Raft = (1+0.67*sqrt(k_AD^2+0.25*k_DT^2))*Shiplength;
-Rstarb = (0.2+k_DT)*Shiplength;
-Rport = (0.2+0.75*k_DT)*Shiplength;
+Rfore = (1+1.34*sqrt(k_AD^2+0.25*k_DT^2))*Shiplength*0.8;
+Raft = (1+0.67*sqrt(k_AD^2+0.25*k_DT^2))*Shiplength*0.8;
+Rstarb = (0.2+k_DT)*Shiplength*0.8;
+Rport = (0.2+0.75*k_DT)*Shiplength*0.8;
 R = [Rfore Raft Rstarb Rport];
 Sigma = R/((log(1/r0))^(1/k));
 

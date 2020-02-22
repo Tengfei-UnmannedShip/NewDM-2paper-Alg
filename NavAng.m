@@ -9,7 +9,7 @@ elseif x==0 && y<0  %y轴负向
     theta=180;
 elseif y==0 && x>0 %x轴正向
     theta=90;
-elseif y==0 && x>0 %x轴负向
+elseif y==0 && x<0 %x轴负向
     theta=270;
 elseif x>0 && y>0
     theta=theta0;
