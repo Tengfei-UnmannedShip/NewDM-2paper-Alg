@@ -1,4 +1,4 @@
-%% (5.1-1版本)加上AFM，当前为简单的扇形遮罩
+%% (5.1-2版本)加上AFM，调试NOMOTO算法的遮罩
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
@@ -124,6 +124,7 @@ for i=1:1:Boat_Num
     Boat(i).FMCourse=[];
     Boat(i).FMCourse_deg=[];
     Boat(i).Current_row=0;
+    Boat(i).RiskHis=[];
     
 end
 
@@ -171,12 +172,25 @@ for t=1:1:2500
         end
         reach_label=reach_label+Boat(i).reach;
     end
+    if  Boat(1).reach==0
+        disp([num2str(t),'时刻','1船完成避碰，计算结束']);
+        break
+    elseif Boat(2).reach==0
+        disp([num2str(t),'时刻','2船完成避碰，计算结束']);
+        break
+    elseif Boat(3).reach==0
+        disp([num2str(t),'时刻','3船完成避碰，计算结束']);
+        break
+    elseif Boat(4).reach==0
+        disp([num2str(t),'时刻','4船完成避碰，计算结束']);
+        break
+    end
     if reach_label<=1    %没到终点时为1，到了为0，因此，至少3艘船到达终点后reach_label<=1
         disp([num2str(t),'时刻','所有船完成避碰，计算结束']);
         break
     end
     
-    for OS=1:1:1    %Boat_Num
+    for OS=1:1:Boat_Num    %Boat_Num
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
                 && Boat(i).reach==1
@@ -204,29 +218,49 @@ for t=1:1:2500
                 %% 建立本船的航行场
                 % 绘制当前本船眼中目标船的SCR
                 t_count31=toc;    %时间计数
-                                        SCR_temp=zeros(m,n);
-                        CAL_Field=zeros(m,n);
-                        ScenarioMap=zeros(m,n);
+                SCR_temp=zeros(m,n);
+                CAL_Field=zeros(m,n);
+                ScenarioMap=zeros(m,n);
                 PeakValue=100;
+                %0223 经过试验发现，在中间位置的时候，几艘船的航迹很诡异，4号船甚至开始震荡，
+                % 究其原因应该是在中间位置各个障碍物的各种场的叠加非常严重，导致无法正常决策
+                % 目前，加上碰撞风险DCPA的判断，如果没有碰撞风险，则不绘制势场图，只绘制本船的约束场
+                RiskLabel=[];
                 for TS=1:1:Boat_Num
                     if TS~=OS
-
-                        Boat_x = Boat(TS).pos(end,1);
-                        Boat_y = Boat(TS).pos(end,2);
-                        Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
-                        Boat_Speed = Boat(TS).SOG(end,:);
-                        Shiplength = ShipSize(TS,1);
                         
-                        SCR_temp= ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
+                        v_os = Boat(OS).speed(end,:);
+                        course_os = Boat(OS).COG_deg(end,:);
+                        pos_os = Boat(OS).pos(end,:);
+                        v_ts = Boat(TS).speed(end,:);
+                        course_ts = Boat(TS).COG_deg(end,:);
+                        pos_ts = Boat(TS).pos(end,:);
+                        d_thre = 1*1852;                % d_thre为判断碰撞风险的风险阈值
                         
-                        %计算避碰规则下的风险场，规则场RuleField
-                        CAL=Boat(OS).CAL(TS);
-                        CAL_Field= RuleField( Boat_x,Boat_y,Boat_theta,Shiplength,MapSize,Res,PeakValue,CAL);
-                        ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
-                        
+                        Col_Risk= CollisionRisk(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,d_thre,1500);
+                        RiskLabel(TS)=Col_Risk;
+                        if  Col_Risk==1 %有碰撞风险为1
+                            
+                            Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
+                            Boat_Speed = Boat(TS).SOG(end,:);
+                            Shiplength = ShipSize(TS,1);
+                            
+                            SCR_temp= ShipDomain( pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
+                            
+                            %计算避碰规则下的风险场，规则场RuleField
+                            CAL=Boat(OS).CAL(TS);
+                            Rule_eta=2;
+                            Rule_alfa=0.1;
+                            CAL_Field= RuleField2( pos_ts(1),pos_ts(2),Boat_theta,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,50,CAL);
+                            ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
+                        end
+                    else
+                        RiskLabel(TS)=3;
                     end
+                    
                 end
-
+                RiskLabel=[t,RiskLabel];
+                Boat(OS).RiskHis=[Boat(OS).RiskHis;RiskLabel];
                 
                 % 绘制当前本船的航行遮罩
                 Boat_x=Boat(OS).pos(1,1);
@@ -234,34 +268,32 @@ for t=1:1:2500
                 Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
                 Shiplength = ShipSize(OS,1);
                 alpha=30;
-                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,Shiplength,MapSize,Res,200);
-                ScenarioMap=ScenarioMap+AFMfiled;
+                R=500;
+                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
+                ScenarioMap=1+ScenarioMap+AFMfiled;
                 
-                %     %% 绘图测试
-                %     figure;
-                %     kk1=mesh(X,Y,Scenario);
-                %     colorpan=ColorPanSet(6);
-                %     colormap(colorpan);%定义色盘
-                %     hold on
-                %     plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-                %     hold on;
-                %     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-                %     axis equal
-                %     axis off
-                %     %     surf(X,Y,APFValue);
+                %                 %% 绘图测试
+                %                 figure;
+                %                 kk1=mesh(X,Y,ScenarioMap);
+                %                 colorpan=ColorPanSet(6);
+                %                 colormap(colorpan);%定义色盘
+                %                 hold on
+                %                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+                %                 hold on;
+                %                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                %                 axis equal
+                %                 axis off
                 %
-                %     figure
-                %     % kk2=pcolor(APFValue);
-                %     kk2=contourf(X,Y,Scenario);  %带填充颜色的等高线图
-                %     colorpan=ColorPanSet(6);
-                %     colormap(colorpan);%定义色盘
-                %     % set(kk2, 'LineStyle','none');
-                %     hold on
-                %     plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-                %     hold on
-                %     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
-                %     % axis equal
-                %     % axis off
+                %                 figure
+                %                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
+                %                 colorpan=ColorPanSet(6);
+                %                 colormap(colorpan);%定义色盘
+                %                 % set(kk2, 'LineStyle','none');
+                %                 hold on
+                %                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+                %                 hold on
+                %                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                
                 FM_map=1./ScenarioMap;
                 t_count32=toc;
                 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
@@ -304,6 +336,31 @@ for t=1:1:2500
     end
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
+    if t==1000
+        Boat1000=Boat;
+        t1000=t_count12;
+        save('data0223-2','Boat1000','t1000');
+        disp('1000s数据已保存');
+        clear Boat1000
+    elseif t==1500
+        Boat1500=Boat;
+        t1500=t_count12;
+        save('data0223-2','Boat1500','t1500','-append');
+        disp('1500s数据已保存');
+        clear Boat1500
+    elseif t==2000
+        Boat2000=Boat;
+        t2000=t_count12;
+        save('data0223-2','Boat2000','t2000','-append');
+        disp('2000s数据已保存');
+        clear Boat2000
+    elseif t==2500
+        Boat2500=Boat;
+        t2500=t_count12;
+        save('data0223-2','Boat2500','t2500','-append');
+        disp('2500s数据已保存');
+        clear Boat2500
+    end
 end
 t3=toc;
 disp(['本次运行总时间: ',num2str(t3)]);

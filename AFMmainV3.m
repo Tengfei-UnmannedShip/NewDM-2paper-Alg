@@ -1,4 +1,4 @@
-%% (5.1-1版本)加上AFM，当前为简单的扇形遮罩
+%% (5.1-2版本)加上AFM，调试NOMOTO算法的遮罩
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
@@ -171,12 +171,25 @@ for t=1:1:2500
         end
         reach_label=reach_label+Boat(i).reach;
     end
+    if  Boat(1).reach==0
+        disp([num2str(t),'时刻','1船完成避碰，计算结束']);
+        break
+    elseif Boat(2).reach==0
+        disp([num2str(t),'时刻','2船完成避碰，计算结束']);
+        break
+    elseif Boat(3).reach==0
+        disp([num2str(t),'时刻','3船完成避碰，计算结束']);
+        break
+    elseif Boat(4).reach==0
+        disp([num2str(t),'时刻','4船完成避碰，计算结束']);
+        break
+    end
     if reach_label<=1    %没到终点时为1，到了为0，因此，至少3艘船到达终点后reach_label<=1
         disp([num2str(t),'时刻','所有船完成避碰，计算结束']);
         break
     end
     
-    for OS=1:1:1    %Boat_Num
+    for OS=1:1:Boat_Num    %Boat_Num
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
                 && Boat(i).reach==1
@@ -204,13 +217,13 @@ for t=1:1:2500
                 %% 建立本船的航行场
                 % 绘制当前本船眼中目标船的SCR
                 t_count31=toc;    %时间计数
-                                        SCR_temp=zeros(m,n);
-                        CAL_Field=zeros(m,n);
-                        ScenarioMap=zeros(m,n);
+                SCR_temp=zeros(m,n);
+                CAL_Field=zeros(m,n);
+                ScenarioMap=zeros(m,n);
                 PeakValue=100;
                 for TS=1:1:Boat_Num
                     if TS~=OS
-
+                        
                         Boat_x = Boat(TS).pos(end,1);
                         Boat_y = Boat(TS).pos(end,2);
                         Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
@@ -226,7 +239,7 @@ for t=1:1:2500
                         
                     end
                 end
-
+                
                 
                 % 绘制当前本船的航行遮罩
                 Boat_x=Boat(OS).pos(1,1);
@@ -234,34 +247,32 @@ for t=1:1:2500
                 Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
                 Shiplength = ShipSize(OS,1);
                 alpha=30;
-                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,Shiplength,MapSize,Res,200);
-                ScenarioMap=ScenarioMap+AFMfiled;
+                R=500;
+                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
+                ScenarioMap=1+ScenarioMap+AFMfiled;
                 
-                %     %% 绘图测试
-                %     figure;
-                %     kk1=mesh(X,Y,Scenario);
-                %     colorpan=ColorPanSet(6);
-                %     colormap(colorpan);%定义色盘
-                %     hold on
-                %     plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-                %     hold on;
-                %     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-                %     axis equal
-                %     axis off
-                %     %     surf(X,Y,APFValue);
-                %
-                %     figure
-                %     % kk2=pcolor(APFValue);
-                %     kk2=contourf(X,Y,Scenario);  %带填充颜色的等高线图
-                %     colorpan=ColorPanSet(6);
-                %     colormap(colorpan);%定义色盘
-                %     % set(kk2, 'LineStyle','none');
-                %     hold on
-                %     plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-                %     hold on
-                %     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
-                %     % axis equal
-                %     % axis off
+%                 %% 绘图测试
+%                 figure;
+%                 kk1=mesh(X,Y,ScenarioMap);
+%                 colorpan=ColorPanSet(6);
+%                 colormap(colorpan);%定义色盘
+%                 hold on
+%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+%                 hold on;
+%                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
+%                 axis equal
+%                 axis off
+%                 
+%                 figure
+%                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
+%                 colorpan=ColorPanSet(6);
+%                 colormap(colorpan);%定义色盘
+%                 % set(kk2, 'LineStyle','none');
+%                 hold on
+%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+%                 hold on
+%                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                
                 FM_map=1./ScenarioMap;
                 t_count32=toc;
                 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
@@ -304,6 +315,16 @@ for t=1:1:2500
     end
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
+    if t==1000
+        save('data0223-1000-1');
+        disp('1000s数据已保存');
+    elseif t==1500
+        save('data0223-1500-1');
+        disp('1500s数据已保存');
+    elseif t==2000
+        save('data0223-2000-1');
+        disp('2000s数据已保存');
+    end
 end
 t3=toc;
 disp(['本次运行总时间: ',num2str(t3)]);

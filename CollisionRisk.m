@@ -1,7 +1,7 @@
-function CurrentRisk= CollisionRisk(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,d_thre)
+function CurrentRisk= CollisionRisk(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,d_thre,time)
 % 通过DCPA和TCPA判断是否有碰撞风险
 % d_thre = 3*1852;  %d_thre为风险阈值
-time=2500;
+% time=2500;
 
 CAP=computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,time);
 DCPA=CAP(5);
