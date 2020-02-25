@@ -1,4 +1,4 @@
-%% (5.1-2版本)加上AFM，调试NOMOTO算法的遮罩
+%% (5.1-2版本)加上AFM，直接在最开始就将实际坐标转换为栅格坐标，以后所有的运算绘图，都用栅格坐标，并且18.52为单位
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
@@ -6,7 +6,7 @@
 % 1.(2.0版本)扩展到海里为单位的地图中
 %   (2.5版本)用WangNing的ShipDomain代替原APF，扩展到海里为单位的地图
 % 2.(3.0版本)添加路径点
-%   (3.5版本)FM算法只计算未来5步或10步：
+%   (3.5版本)A*算法只计算未来5步或10步：
 %       步骤1:只计算10步，记录下运行的时间和结果，与完全计算的做对比，确认只计算10步的准确性和效率；
 %       步骤2:加入路径点，然后第一次决策计算10步，然后在第一个for循环开始时更新状态，每5步（本程序中是5分钟，
 %            t=60*5）重新算一次路径点，如果没有路径点了，就以终点为目标，接下来的过程中，如果再次出现路径点，
@@ -30,6 +30,7 @@
 %   (5.2版本)将路径点改为规则场，加上不推测的CAL
 %       步骤1：将TRB论文中的规则场应用进来，按照固定的CAL场航行
 %       步骤2：本船的航行场，每艘船的风险场，每艘船眼中当前的CAL场的搭配与调节
+%       步骤3：直接在最开始就将实际坐标转换为栅格坐标，以后所有的运算绘图，都用栅格坐标，并且18.52为单位
 % 5.(6.0版本)加上CAL推测，放大精度，蒙特卡洛方法计算多次的预测结果，并进行贝叶斯估计
 %       步骤1：根据监测范围和风险船的数目确定场景数，根据不同的场景生成推测的TS眼中的场景，
 %             并用推测的TS的航行方法进行蒙特卡洛仿真，为了保证速度，精度可以挑到200m或185.2m,甚至更大
@@ -39,9 +40,6 @@
 %
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 
 clear
 clc
@@ -95,7 +93,15 @@ t_count11=0;    %时间计数
 t_count12=0;    %时间计数
 t_count21=0;    %时间计数
 t_count22=0;    %时间计数
-Start_pos=[];
+
+%地图设置
+% MapSize_temp=max(max(abs(Start_pos)))/1852;
+MapSize=[8,8];
+GoalRange=MapSize-[0.75,0.75];
+Res=18.52*2;  %Resolution地图的分辨率
+[X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
+[m,n]=size(X);
+
 for i=1:1:Boat_Num
     Boat(i).reach=1; %到达标志，到达目标点时为0，未到达时为1
     Boat(i).SOG = ShipInfo(i,3);                 %speed over ground，第一行为对地速度，单位节
@@ -104,30 +110,33 @@ for i=1:1:Boat_Num
     Boat(i).COG_rad = ShipInfo(i,4)/180*pi;      %course over ground，第一行为初始航向（rad，正北（Y正向）为0）
     Boat(i).HisCOG=[Boat(i).COG_rad,Boat(i).COG_deg];
     %由中间位置倒推的初始位置，此处pos单位为米,随后每个时刻新增一行
-    Boat(i).pos=[ShipInfo(i,1)-Boat(i).speed*sind(Boat(i).COG_deg)*1250, ShipInfo(i,2)-Boat(i).speed*cosd(Boat(i).COG_deg)*1250];
-    Start_pos = [Start_pos;Boat(i).pos];
+    pos0=[ShipInfo(i,1)-Boat(i).speed*sind(Boat(i).COG_deg)*1250, ShipInfo(i,2)-Boat(i).speed*cosd(Boat(i).COG_deg)*1250];
+    %把初始位置归一到栅格位置上，但是依然有正负
+    Boat(i).pos(1,1) = round(pos0(1,1)/Res)*Res;
+    Boat(i).pos(1,2) = round(pos0(1,2)/Res)*Res;
     Boat(i).HisPos=Boat(i).pos;
+    %上一次决策的运算结果
+    Boat(i).path = [];
+    Boat(i).RiskData=[];
 end
-%地图设置
-% MapSize_temp=max(max(abs(Start_pos)))/1852;
-MapSize=[8,8];
-GoalRange=MapSize-[0.75,0.75];
-Res=50;  %Resolution地图的分辨率
-[X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
-[m,n]=size(X);
+
 
 %其他决策参数设置
 for i=1:1:Boat_Num
-    Boat(i).goal=Goal_point(Boat(i).pos(1,1),Boat(i).pos(1,2),Boat(i).COG_deg,GoalRange*1852); %Boat(i)的初始目标位置，单位为米
+    %把目标点位置归一到栅格位置上，但是依然有正负
+    goal0=Goal_point(Boat(i).pos(1,1),Boat(i).pos(1,2),Boat(i).COG_deg,GoalRange*1852); %Boat(i)的初始目标位置，单位为米
+    Boat(i).goal(1,1) =round(goal0(1,1)/Res)*Res;
+    Boat(i).goal(1,2) =round(goal0(1,2)/Res)*Res;
+    
     Boat(i).FM_lable=0; %初始时刻FM_lable为0，直到第一个时刻计算FM
-    Boat(i).FMPos=[];
-    Boat(i).FMCourse=[];
-    Boat(i).FMCourse_deg=[];
+    Boat(i).decision_count=0; %初始时刻decision_count为0，直到第一个时刻计算FM
     Boat(i).Current_row=0;
+    Boat(i).RiskHis=[];
+    Boat(i).End=[];
     
 end
 
-for t=1:1:2500
+for t=1:1:3600*2
     t_count11=t_count12;    %时间计数
     reach_label=0; %每个时刻归零
     %% 每个时刻的状态更新
@@ -135,7 +144,7 @@ for t=1:1:2500
         if Boat(i).FM_lable~=0 && Boat(i).reach==1 %即已经开始决策但没有到终点，此时按照决策来
             pos_temp=0;
             row=Boat(i).Current_row;
-            while pos_temp<Boat(i).speed
+            while pos_temp<ceil(Boat(i).speed/Res)
                 
                 delta_pos0=Boat(i).path(row+1,:)-Boat(i).path(row,:);
                 delta_pos=norm(delta_pos0);
@@ -145,6 +154,7 @@ for t=1:1:2500
             end
             detaPos=Boat(i).path(row,:)-Boat(i).pos;
             Boat(i).pos = Boat(i).path(row,:);
+            
             Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
             Boat(i).COG_deg = NavAng(detaPos);
             Boat(i).COG_rad = Boat(i).COG_deg/180*pi;
@@ -192,28 +202,23 @@ for t=1:1:2500
     for OS=1:1:Boat_Num    %Boat_Num
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
-                && Boat(i).reach==1
-            disp([num2str(t),'时刻',num2str(OS),'船开始决策']);
+                && Boat(OS).reach==1
             
-            %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
-            if shipLabel(OS,2)==0    % inferLabbel:是否推测:0.不推测,1.推测;
-                % 不推测，即不改变CAL，即按照最初的CAL，每艘船都知道彼此的CAL
-                Boat(OS).CAL=CAL0(OS,:);
-            elseif  shipLabel(OS,2)==1
-                % 贝叶斯推测
-                Boat(OS).CAL=CAL0(OS,:); %贝叶斯推断最后得出的，还是当前时刻的Boat(i).CAL
-            end
-            %% 本船路径规划主程序
-            % 在当前时刻重新计算FM的条件包括：
-            %   1.之前的FM计算结果已经用尽，需要重新计算；
-            if Boat(OS).FM_lable>=size(Boat(OS).FMPos,1)
-                Calculate_lable=1;
-                
+            if Boat(OS).decision_count<=5 &&  Boat(OS).decision_count>0  %每次决策之后保持5个周期
+                disp([num2str(t),'时刻',num2str(OS),'船第',num2str(Boat(OS).decision_count),'周期保持上轮决策']);
+                Boat(OS).decision_count=Boat(OS).decision_count+1;
             else
-                Calculate_lable=0;
-            end
-            
-            if Calculate_lable==1
+                disp([num2str(t),'时刻',num2str(OS),'船开始决策']);
+                
+                %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
+                if shipLabel(OS,2)==0    % inferLabbel:是否推测:0.不推测,1.推测;
+                    % 不推测，即不改变CAL，即按照最初的CAL，每艘船都知道彼此的CAL
+                    Boat(OS).CAL=CAL0(OS,:);
+                elseif  shipLabel(OS,2)==1
+                    % 贝叶斯推测
+                    Boat(OS).CAL=CAL0(OS,:); %贝叶斯推断最后得出的，还是当前时刻的Boat(i).CAL
+                end
+                
                 %% 建立本船的航行场
                 % 绘制当前本船眼中目标船的SCR
                 t_count31=toc;    %时间计数
@@ -221,25 +226,62 @@ for t=1:1:2500
                 CAL_Field=zeros(m,n);
                 ScenarioMap=zeros(m,n);
                 PeakValue=100;
+                %0223 经过试验发现，在中间位置的时候，几艘船的航迹很诡异，4号船甚至开始震荡，
+                % 究其原因应该是在中间位置各个障碍物的各种场的叠加非常严重，导致无法正常决策
+                % 目前，加上碰撞风险DCPA的判断，如果没有碰撞风险，则不绘制势场图，只绘制本船的约束场
+                RiskLabel=[];
+                k=1;
                 for TS=1:1:Boat_Num
                     if TS~=OS
                         
-                        Boat_x = Boat(TS).pos(end,1);
-                        Boat_y = Boat(TS).pos(end,2);
-                        Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
-                        Boat_Speed = Boat(TS).SOG(end,:);
-                        Shiplength = ShipSize(TS,1);
+                        v_os = Boat(OS).speed(end,:);
+                        course_os = Boat(OS).COG_deg(end,:);
+                        pos_os = Boat(OS).pos(end,:);
+                        v_ts = Boat(TS).speed(end,:);
+                        course_ts = Boat(TS).COG_deg(end,:);
+                        pos_ts = Boat(TS).pos(end,:);
+                        d_thre = 1*1852;                % d_thre为判断碰撞风险的风险阈值
                         
-                        SCR_temp= ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
+                        CPA_temp=computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
+                        DCPA_temp=CPA_temp(5);
+                        %如果DCPA_temp=0，后续会出现0所为被除数的事，因此最小的DCPA设置为1，如果太小的话，除完会很大，影响前面的参数
+                        if DCPA_temp<1
+                            DCPA_temp=1;
+                        end
+                        TCPA_temp=CPA_temp(6);
+                        if DCPA_temp<=1852 && TCPA_temp>1   %TCPA>1即排除啊当前位置为CPA的情况
+                            CurrentRisk=1; %有碰撞风险为1
+                        else
+                            CurrentRisk=0;
+                        end
+                        Dis_temp=norm(pos_os-pos_ts);
+                        risklevel=0;
+                        %计算当前的目标船、有无风险、TCPA、DCPA、两船间的距离
+                        Risk_temp(k,:) = [TS,CurrentRisk, TCPA_temp,DCPA_temp,Dis_temp,risklevel];
                         
-                        %计算避碰规则下的风险场，规则场RuleField
-                        CAL=Boat(OS).CAL(TS);
-                        CAL_Field= RuleField( Boat_x,Boat_y,Boat_theta,Shiplength,MapSize,Res,PeakValue,CAL);
-                        ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
-                        
+                        k=k+1;
+                        if  CurrentRisk==1 %有碰撞风险为1
+                            
+                            Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
+                            Boat_Speed = Boat(TS).SOG(end,:);
+                            Shiplength = ShipSize(TS,1);
+                            
+                            SCR_temp= ShipDomain( pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
+                            
+                            %计算避碰规则下的风险场，规则场RuleField
+                            CAL=Boat(OS).CAL(TS);
+                            Rule_eta=2;
+                            Rule_alfa=0.1;
+                            CAL_Field= RuleField2( pos_ts(1),pos_ts(2),Boat_theta,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,50,CAL);
+                            ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
+                        end
+                    else
+                        RiskLabel(TS)=3;
                     end
+                    
                 end
-                
+                RiskLabel=[t,RiskLabel];
+                Boat(OS).RiskHis=[Boat(OS).RiskHis;RiskLabel];
                 
                 % 绘制当前本船的航行遮罩
                 Boat_x=Boat(OS).pos(1,1);
@@ -251,79 +293,193 @@ for t=1:1:2500
                 AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
                 ScenarioMap=1+ScenarioMap+AFMfiled;
                 
-%                 %% 绘图测试
-%                 figure;
-%                 kk1=mesh(X,Y,ScenarioMap);
-%                 colorpan=ColorPanSet(6);
-%                 colormap(colorpan);%定义色盘
-%                 hold on
-%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-%                 hold on;
-%                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-%                 axis equal
-%                 axis off
-%                 
-%                 figure
-%                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
-%                 colorpan=ColorPanSet(6);
-%                 colormap(colorpan);%定义色盘
-%                 % set(kk2, 'LineStyle','none');
-%                 hold on
-%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-%                 hold on
-%                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                %                 %% 绘图测试
+                %                 figure;
+                %                 kk1=mesh(X,Y,ScenarioMap);
+                %                 colorpan=ColorPanSet(6);
+                %                 colormap(colorpan);%定义色盘
+                %                 hold on
+                %                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+                %                 hold on;
+                %                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
+                %                 axis equal
+                %                 axis off
+                %
+                %                 figure
+                %                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
+                %                 colorpan=ColorPanSet(6);
+                %                 colormap(colorpan);%定义色盘
+                %                 % set(kk2, 'LineStyle','none');
+                %                 hold on
+                %                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+                %                 hold on
+                %                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
                 
                 FM_map=1./ScenarioMap;
                 t_count32=toc;
                 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
+                %%寻找指引点
+                
+                TCPA_OS=sum(Risk_temp(:,3));
+                DCPA_OS=sum(Risk_temp(:,4));
+                Dis_OS=sum(Risk_temp(:,5));
+                Risk_OS=Risk_temp;
+                
+                Risk_OS(:,3)=TCPA_OS./Risk_temp(:,3);
+                Risk_OS(:,4)=DCPA_OS./Risk_temp(:,4);
+                Risk_OS(:,5)=Dis_OS./Risk_temp(:,5);
+                %这里的目的是找到风险最大的值，采用的方法是综合法，TCPA最紧迫，然后Dis，然后是DCPA，
+                %用100、10、1作为系数区分开，但是不知道效果如何，需要进一步的调试
+                Risk_OS(:,6)=Risk_OS(:,2).*(100*Risk_OS(:,3)+10*Risk_OS(:,5)+Risk_OS(:,4));
+                t_risk=t*ones(size(Risk_OS,1));
+                Boat(OS).RiskData=[Boat(OS).RiskData;t_risk,Risk_OS];
+                
+                %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
+                Risk_level=0;
+                Danger_TS=OS;
+                Risk_count=0;
+                k=1;
+                for TS=1:1:Boat_Num
+                    if TS~=OS
+                        if Risk_OS(k,2)~=0
+                            Risk_count=Risk_count+1;
+                            if Risk_OS(k,6)>Risk_level
+                                Risk_level=Risk_OS(k,6);
+                                Danger_TS=Risk_OS(k,1);
+                            end
+                        end
+                        k=k+1;
+                    end
+                    
+                end
+                
                 %% FM算法主程序
                 start_point(1,1) = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
                 start_point(1,2) = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
                 
-                end_point(1,1) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
-                end_point(1,2) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
+                if  Danger_TS==OS   %即当前没有风险船，目标点为终点
+                    end_point(1,1) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
+                    end_point(1,2) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
+                    disp('当前没有风险船，目标点为终点');
+                else     %最危险的船即为当前的目标位置路径点
+                    
+                    v_ts = Boat(Danger_TS).speed(end,:);
+                    course_ts = Boat(Danger_TS).COG_deg(end,:);
+                    pos_ts = Boat(Danger_TS).pos(end,:);
+                    TSlength = ShipSize(Danger_TS,1);
+                    changeLabel = 1; %可变路径点
+                    
+                    WayPoint_temp = WP_2ship(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,TSlength,changeLabel);
+                    
+                    if Boat(OS).CAL(Danger_TS)==0 %此时本船对该目标船是0，即本船为Give-way让路船
+                        %此时本船应从目标船船头(fore section)过，即为船头的目标点
+                        WayPoint= WayPoint_temp(1,1:2);
+                    elseif Boat(OS).CAL(Danger_TS)==1  %此时本船对该目标船是1，即本船为Stand-on直航船
+                        %此时本船应从目标船船尾(aft section)过
+                        WayPoint= WayPoint_temp(1,3:4);
+                    end
+                    
+                    end_point(1,1) =round((WayPoint(1,1)+MapSize(1)*1852)/Res);
+                    end_point(1,2) =round((WayPoint(1,2)+MapSize(2)*1852)/Res);
+                    disp(['当前风险船有',num2str(Risk_count),'艘，最危险的船为',num2str(Danger_TS)]);
+                end
                 
-                %当起始点或终点到边界处时，认为在内部
-                if start_point(1,1)>m
-                    start_point(1,1)=m;
+                Boat(OS).End=[Boat(OS).End;t,Danger_TS,end_point];
+                if size(Boat(OS).End,1)<=1   %第一次运算
+                    %当起始点或终点到边界处时，认为在内部
+                    if start_point(1,1)>m
+                        start_point(1,1)=m;
+                    end
+                    if start_point(1,2)>n
+                        start_point(1,2)=n;
+                    end
+                    if end_point(1,1)>m
+                        end_point(1,1)=m;
+                    end
+                    if end_point(1,2)>n
+                        end_point(1,2)=n;
+                    end
+                    
+                    t_count21=toc;
+                    [Mtotal, paths] = FMM(FM_map, end_point', start_point');
+                    Boat(OS).FM_lable=Boat(OS).FM_lable+1;
+                    path0 = paths{:};
+                    path0 =path0';
+                    
+                    posData = zeros(size(path0));
+                    posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
+                    posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
+                    Boat(OS).path=posData;
+                    Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
+                    Boat(OS).decision_count=1;
+                    
+                else
+                    last_end=Boat(OS).End(end-1,3:4);
+                    end_dis=norm(last_end-end_point);
+                    if  end_dis<=3*Res   %如果目标位置变动不大，则不计算
+                        
+                        disp('目标位置变动不大，则不计算');
+                    else
+                        %当起始点或终点到边界处时，认为在内部
+                        if start_point(1,1)>m
+                            start_point(1,1)=m;
+                        end
+                        if start_point(1,2)>n
+                            start_point(1,2)=n;
+                        end
+                        if end_point(1,1)>m
+                            end_point(1,1)=m;
+                        end
+                        if end_point(1,2)>n
+                            end_point(1,2)=n;
+                        end
+                        
+                        t_count21=toc;
+                        [Mtotal, paths] = FMM(FM_map, end_point', start_point');
+                        Boat(OS).FM_lable=Boat(OS).FM_lable+1;
+                        path0 = paths{:};
+                        path0 =path0';
+                        
+                        posData = zeros(size(path0));
+                        posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
+                        posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
+                        Boat(OS).path=posData;
+                        Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
+                        Boat(OS).decision_count=1;
+                    end
                 end
-                if start_point(1,2)>n
-                    start_point(1,2)=n;
-                end
-                if end_point(1,1)>m
-                    end_point(1,1)=m;
-                end
-                if end_point(1,2)>n
-                    end_point(1,2)=n;
-                end
-                
-                t_count21=toc;
-                [Mtotal, paths] = FMM(FM_map, end_point', start_point');
-                Boat(OS).FM_lable=Boat(OS).FM_lable+1;
-                path0 = paths{:};
-                path0 =path0';
-                
-                posData = zeros(size(path0));
-                posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
-                posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
-                Boat(OS).path=posData;
-                Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
                 t_count22=toc;
                 disp([num2str(OS),'号船计算的运行时间: ',num2str(t_count22-t_count21)]);
             end
         end
     end
+    
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
     if t==1000
-        save('data0223-1000-1');
+        Boat1000=Boat;
+        t1000=t_count12;
+        save('data0225-1100','Boat1000','t1000');
         disp('1000s数据已保存');
+        clear Boat1000
     elseif t==1500
-        save('data0223-1500-1');
+        Boat1500=Boat;
+        t1500=t_count12;
+        save('data0225-1100','Boat1500','t1500','-append');
         disp('1500s数据已保存');
+        clear Boat1500
     elseif t==2000
-        save('data0223-2000-1');
+        Boat2000=Boat;
+        t2000=t_count12;
+        save('data0225-1100','Boat2000','t2000','-append');
         disp('2000s数据已保存');
+        clear Boat2000
+    elseif t==2500
+        Boat2500=Boat;
+        t2500=t_count12;
+        save('data0225-1100','Boat2500','t2500','-append');
+        disp('2500s数据已保存');
+        clear Boat2500
     end
 end
 t3=toc;

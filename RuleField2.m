@@ -16,7 +16,8 @@ Rule_r=0.2*Shiplength;        %小圆半径为0.5倍船长
 BoatX = (X-Boat_x)*cos(Boat_theta)+(Y-Boat_y)*sin(Boat_theta);
 BoatY = (Y-Boat_y)*cos(Boat_theta)-(X-Boat_x)*sin(Boat_theta);
 
-if CAL==0  %此时该目标船对本船是0，即目标船为Give-way让路船
+if CAL==0  %此时本船对该目标船是0，即本船为Give-way让路船
+
     Rule_R=3*Shiplength;        %大圆半径为2倍船长
     Rule_r=0.2*Shiplength;        %小圆半径为0.5倍船长
     %此时本船应从目标船船头(fore section)过，即fore section半径为小，aft section半径为大
@@ -27,7 +28,8 @@ if CAL==0  %此时该目标船对本船是0，即目标船为Give-way让路船
     RuleDis=RuleDis+(1/Rule_R)*sqrt(BoatX.^2+BoatY.^2).*(BoatX<=0 & -BoatX<=tand(22.5)*BoatY);
     RuleDis=RuleDis+(1/Rule_r)*sqrt(BoatX.^2+BoatY.^2).*(BoatX<=0 & -BoatX> tand(22.5)*BoatY);
     
-elseif CAL==1   %此时该目标船对本船是1，即目标船为Stand-on直航船
+elseif CAL==1   %此时本船对该目标船是1，即本船为Stand-on直航船
+    
     Rule_R=1.5*Shiplength;        %大圆半径为2倍船长
     Rule_r=0.2*Shiplength;        %小圆半径为0.5倍船长
     
