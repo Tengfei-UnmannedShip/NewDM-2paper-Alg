@@ -1,11 +1,8 @@
 
-
-
-r = 0:10;
-theta = 15:1:345;
-Z = ones(numel(r),numel(theta));
-% Z(r<7,:) = 2;
-Z(r<3,:) = 3;
-X = r(:)*cosd(theta);
-Y = r(:)*sind(theta);
-surf(X,Y,Z)
+A=[1 2 3
+    4 5 6
+    7 8 9];
+B=[3 4 5
+    1 3 5
+    6 8 9];
+c=min(A,B)

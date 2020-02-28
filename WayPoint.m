@@ -9,8 +9,8 @@ time=1000;
 
 dis=norm(pos_os-pos_ts);
 if  changeLabel==0
-    a1=4;  %按船头2倍船长，船尾1.5倍船长设计
-    a2=3;
+    a1=2;  %按船头2倍船长，船尾1.5倍船长设计
+    a2=1.5;
 else
     if dis<200
         a1=200/TSlength;  %距离过近的时候按船头200米，船尾100米设计

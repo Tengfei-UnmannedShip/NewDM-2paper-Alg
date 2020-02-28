@@ -2,10 +2,8 @@ function [D,S,Q] = perform_fast_marching(W, start_points, options)
 % 以2D或3D启动的Fast Marching快速行进算法。
 % perform_fast_marching - launch the Fast Marching algorithm, in 2D or 3D.
 %
-%   [D,S,Q] = perform_fast_marching(W, start_points, options)
-%
 %   W is an (n,n) (for 2D, d=2) or (n,n,n) (for 3D, d=3) 
-%       weight matrix. The geodesics will follow regions where W is large.
+%       weight matrix. The geodesics（测地线，测度线） will follow regions where W is large.
 %       W must be > 0.
 %   'start_points' is a d x k array, start_points(:,i) is the ith starting point .
 %
@@ -35,7 +33,6 @@ function [D,S,Q] = perform_fast_marching(W, start_points, options)
 %   See also: perform_fast_marching_3d.
 %
 %   Copyright (c) 2007 Gabriel Peyre
-
 
 options.null = 0;
 
@@ -124,3 +121,4 @@ Q = Q+1;
 
 % replace C 'Inf' value (1e9) by Matlab Inf value.
 D(D>1e8) = Inf;
+end

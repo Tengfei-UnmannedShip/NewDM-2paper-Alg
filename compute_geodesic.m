@@ -1,13 +1,11 @@
 function path = compute_geodesic(D, x, options)
 
 % compute_geodesic - extract a discrete geodesic in 2D and 3D
-%
-%   path = compute_geodesic(D,x,options);
-%
+% 提取2D和3D中的离散测地线
 %   D is the distance map.
 %   x is the starting point.
 %   path is the shortest path between x and the starting point y (wich should
-%   satisfy D(y)=0).
+%   satisfy D(y)=0).只有在D中定义终点y，即 D(y)=0
 %
 %   Set options.method = 'discrete' if you want to use a pure discrete
 %   gradient descent.
@@ -62,7 +60,7 @@ end
 function path = compute_discrete_geodesic(D,x)
 
 % compute_discrete_geodesic - extract a discrete geodesic in 2D and 3D
-%
+% 提取2D和3D中的离散测地线
 %   path = compute_discrete_geodesic(D,x);
 %
 %   Same as extract_path_xd but less precise and more robust.
@@ -122,7 +120,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function path = extract_path_2d(A,end_points,options)
-
+%% 生成2维离散测地线
 % extract_path_2d - extract the shortest path using
 %   a gradient descent.
 %

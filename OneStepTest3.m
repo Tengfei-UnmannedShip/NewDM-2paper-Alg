@@ -1,4 +1,9 @@
-%用于单船的路径规划测试
+% 用于测试angle guidance功能
+% 具体步骤：
+% 1.首先用旧的方法找到angle guidance的势场中所有不是0的点，找出所有位置
+% 2.全是1的地图和上面的点的集合放入FMM函数，生成新的地图
+% 3.注意，在angle guidance生成时的障碍物点列中xy是正的，但是在FMM路径规划中输入的起点终点和输出的路径xy都是反的
+% 用于单船的路径规划测试
 clear
 
 shipLabel=[
@@ -85,7 +90,7 @@ for i=1:1:Boat_Num
     Boat(i).End=[];
     
 end
-
+tic
 OS=1;
 Boat(OS).CAL=CAL0(OS,:);
 
@@ -95,7 +100,7 @@ t_count31=toc;    %时间计数
 SCR_temp=zeros(m,n);
 CAL_Field=zeros(m,n);
 ScenarioMap=zeros(m,n);
-AFMfiled=zeros(m,n);
+AFMfield=zeros(m,n);
 PeakValue=100;
 %0223 经过试验发现，在中间位置的时候，几艘船的航迹很诡异，4号船甚至开始震荡，
 % 究其原因应该是在中间位置各个障碍物的各种场的叠加非常严重，导致无法正常决策
@@ -157,6 +162,7 @@ for TS=1:1:Boat_Num
 end
 RiskLabel=[1,RiskLabel];
 Boat(OS).RiskHis=[Boat(OS).RiskHis;RiskLabel];
+RiskMap=1./(ScenarioMap+1);
 
 % 绘制当前本船的航行遮罩
 Boat_x=Boat(OS).pos(1,1);
@@ -165,8 +171,16 @@ Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
 Shiplength = ShipSize(OS,1);
 alpha=30;
 R=500;
-AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
-ScenarioMap=1+ScenarioMap+AFMfiled;
+AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
+[AG_row,AG_col]=find(AFMfield~=0);
+AG_points=[AG_row,AG_col];
+AG_map0=ones(size(AFMfield));
+[AG_map, AGpaths] = FMM(AG_map0, AG_points');
+FM_map=min(AG_map,RiskMap);
+% figure
+% mesh(X,Y,AG_map);
+% figure
+% contourf(X,Y,AG_map);
 
 %                 %% 绘图测试
 %                 figure;
@@ -190,7 +204,7 @@ ScenarioMap=1+ScenarioMap+AFMfiled;
 %                 hold on
 %                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
 
-FM_map=1./ScenarioMap;
+
 t_count32=toc;
 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
 %%寻找指引点
@@ -229,49 +243,51 @@ for TS=1:1:Boat_Num
 end
 
 %% FM算法主程序
-start_point(1,1) = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
-start_point(1,2) = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
+start_point(1,2) = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
+start_point(1,1) = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
 
 
-end_point(1,1) =round((5*1852+MapSize(1)*1852)/Res);
-end_point(1,2) =round((7*1852+MapSize(2)*1852)/Res);
+if  Danger_TS==OS   %即当前没有风险船，目标点为终点
+    
+    end_point(1,1) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
+    end_point(1,2) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
+    disp('当前没有风险船，目标点为终点');
+    
+else     %最危险的船即为当前的目标位置路径点
+    disp(['当前风险船有',num2str(Risk_count),'艘，最危险的船为',num2str(Danger_TS)]);
+    if   size(Boat(OS).End,1)>=1 && Boat(OS).End(end,2)==Danger_TS   %不是第一次决策且危险船与上次相同
+        end_point= Boat(OS).End(end,3:4);
+    else
+        v_ts = Boat(Danger_TS).speed(end,:);
+        course_ts = Boat(Danger_TS).COG_deg(end,:);
+        pos_ts = Boat(Danger_TS).pos(end,:);
+        TSlength = ShipSize(Danger_TS,1);
+        changeLabel = 0; %不可变路径点
+        
+        WayPoint_temp =  WayPoint(pos_os,course_ts,pos_ts,TSlength,changeLabel);
+        %         WayPoint_temp = WP_2ship(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,TSlength,changeLabel);
+        if Boat(OS).CAL(Danger_TS)==0 %此时本船对该目标船是0，即本船为Stand-on直航船
+            %此时本船应从目标船船头(fore section)过，即为船头的目标点
+            WP= WayPoint_temp(1,1:2);
+            disp('路径点为船头点');
+        elseif Boat(OS).CAL(Danger_TS)==1  %此时本船对该目标船是1，即本船为Give-way让路船
+            %此时本船应从目标船船尾(aft section)过，即为船尾的目标点
+            WP= WayPoint_temp(1,3:4);
+            disp('路径点为船尾点');
+        end
+        
+        end_point(1,2) =round((WP(1,1)+MapSize(1)*1852)/Res);
+        end_point(1,1) =round((WP(1,2)+MapSize(2)*1852)/Res);
+        
+    end
+end
 
-% if  Danger_TS==OS   %即当前没有风险船，目标点为终点
-%     
-%     end_point(1,1) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
-%     end_point(1,2) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
-%     disp('当前没有风险船，目标点为终点');
-%     
-% else     %最危险的船即为当前的目标位置路径点
-%     disp(['当前风险船有',num2str(Risk_count),'艘，最危险的船为',num2str(Danger_TS)]);
-%     if   size(Boat(OS).End,1)>=1 && Boat(OS).End(end,2)==Danger_TS   %不是第一次决策且危险船与上次相同
-%         end_point= Boat(OS).End(end,3:4);
-%     else
-%         v_ts = Boat(Danger_TS).speed(end,:);
-%         course_ts = Boat(Danger_TS).COG_deg(end,:);
-%         pos_ts = Boat(Danger_TS).pos(end,:);
-%         TSlength = ShipSize(Danger_TS,1);
-%         changeLabel = 0; %不可变路径点
-%         
-%         WayPoint_temp =  WayPoint(pos_os,course_ts,pos_ts,TSlength,changeLabel);
-% %         WayPoint_temp = WP_2ship(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,TSlength,changeLabel);
-%         if Boat(OS).CAL(Danger_TS)==0 %此时本船对该目标船是0，即本船为Stand-on直航船
-%             %此时本船应从目标船船头(fore section)过，即为船头的目标点
-%             WP= WayPoint_temp(1,1:2);
-%             disp('路径点为船头点');
-%         elseif Boat(OS).CAL(Danger_TS)==1  %此时本船对该目标船是1，即本船为Give-way让路船
-%             %此时本船应从目标船船尾(aft section)过，即为船尾的目标点
-%             WP= WayPoint_temp(1,3:4);
-%             disp('路径点为船尾点');
-%         end
-%         
-%         end_point(1,1) =round((WP(1,1)+MapSize(1)*1852)/Res);
-%         end_point(1,2) =round((WP(1,2)+MapSize(2)*1852)/Res);
-%         
-%     end
-% end
-
+% end_point=[695,271];
 Boat(OS).End=[Boat(OS).End;t,Danger_TS,end_point];
+
+% end_point(1,2)=round((-7.5*1852+MapSize(1)*1852)/Res);
+% end_point(1,1)=round((0*1852+MapSize(2)*1852)/Res);
+
 
 if size(Boat(OS).End,1)>1 && norm(Boat(OS).End(end-1,3:4)-end_point)<=2 ... %不是第一次运算的话，需要判断是否要维持上次的决策
         && Boat(OS).Current_row <= size(Boat(OS).path,1)-10         %当预决策的path只剩不到30个点时，强制重新计算
@@ -292,17 +308,21 @@ else
     end
     
     t_count21=toc;
-    [Mtotal, paths] = FMM(FM_map, end_point',start_point');
+
+%     [Mtotal, paths] = FMM(FM_map, end_point',start_point');
+[Mtotal, paths] = FMM(FM_map, start_point',end_point');
     Boat(OS).FM_lable=Boat(OS).FM_lable+1;
-    path0 = paths{:};
-    path0 =path0';
+    FinalMap=Mtotal;
+    FMpath0 = paths{:};
+    FMpath =FMpath0';
+    path0=fliplr(FMpath);
     
     posData = zeros(size(path0));
     posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
     posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
     
-    end_point(1)=end_point(1)*Res-MapSize(1)*1852;
-    end_point(2)=end_point(2)*Res-MapSize(2)*1852;
+    end_point1(1)=end_point(2)*Res-MapSize(1)*1852;
+    end_point1(2)=end_point(1)*Res-MapSize(2)*1852;
     Boat(OS).path=posData;
     Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
     Boat(OS).decision_count=1;
@@ -312,21 +332,20 @@ end
 
 %% 绘图
 % 绘图测试
-figure;
-kk1=mesh(X,Y,ScenarioMap);
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
-hold on
-plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-hold on;
-ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-hold on
-plot(end_point(1),end_point(2),'r*');
-axis equal
-axis off
+figure
+mesh(X,Y,FM_map);
+title('当前输入地图')
+% figure
+% mesh(X,Y,RiskMap);
+% title('当前船舶安全图')
+% figure
+% mesh(X,Y,GuidanceMap);
+% title('当前导引图')
+figure
+mesh(X,Y,FinalMap)
 
 figure
-kk2=contourf(X,Y,ScenarioMap-1);  %带填充颜色的等高线图
+kk0=contourf(X,Y,FinalMap);  %带填充颜色的等高线图
 colorpan=ColorPanSet(6);
 colormap(colorpan);%定义色盘
 hold on
@@ -352,7 +371,7 @@ plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
 hold on
 plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
 hold on
-plot(end_point(1),end_point(2),'r*');
+plot(end_point1(1),end_point1(2),'r*');
 
 axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
 set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
@@ -362,4 +381,48 @@ set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times
 grid on;
 xlabel('\it n miles', 'Fontname', 'Times New Roman');
 ylabel('\it n miles', 'Fontname', 'Times New Roman');
+title('当前FM导出图')
+
 box on;
+
+
+
+% 
+% figure
+% kk2=contourf(X,Y,safetymap);  %带填充颜色的等高线图
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+% hold on
+% 
+% plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
+% hold on
+% plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
+% hold on
+% plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
+% hold on
+% 
+% plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
+% hold on
+% plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
+% hold on
+% 
+% plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
+% hold on
+% plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
+% hold on
+% 
+% plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
+% hold on
+% plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
+% hold on
+% plot(end_point(1),end_point(2),'r*');
+% 
+% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% grid on;
+% xlabel('\it n miles', 'Fontname', 'Times New Roman');
+% ylabel('\it n miles', 'Fontname', 'Times New Roman');
+% box on;

@@ -1,4 +1,4 @@
-%% (5.2版本)加上AFM，直接在最开始就将实际坐标转换为栅格坐标，以后所有的运算绘图，都用栅格坐标，并且18.52为单位
+%% (5.3版本)AFM用FM方法生成地图，和safety map结合找最小值，形成新的地图
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
@@ -31,6 +31,15 @@
 %       步骤1：将TRB论文中的规则场应用进来，按照固定的CAL场航行
 %       步骤2：本船的航行场，每艘船的风险场，每艘船眼中当前的CAL场的搭配与调节
 %       步骤3：直接在最开始就将实际坐标转换为栅格坐标，以后所有的运算绘图，都用栅格坐标，并且18.52为单位
+%   (5.3版本)新的AFM计算方法：
+%       经过和树武讨论，原来的AFM取值是没有用的，原因是生成方式有问题，解决方法：
+%          (1)AFM场和安全场相结合取最小值生成新的场
+%          (2)FM工具箱输入及输出的XY设置与我的正好相反，因此导致了很多诡异的路径。修改后再次试验。
+%       具体步骤：
+%        1.首先用旧的方法找到angle guidance的势场中所有不是0的点，找出所有位置
+%        2.全是1的地图和上面的点的集合放入FMM函数，生成新的地图
+%        3.注意，在angle guidance生成时的障碍物点列中xy是正的，但是在FMM路径规划中输入的起点终点和输出的路径xy都是反的
+%
 % 5.(6.0版本)加上CAL推测，放大精度，蒙特卡洛方法计算多次的预测结果，并进行贝叶斯估计
 %       步骤1：根据监测范围和风险船的数目确定场景数，根据不同的场景生成推测的TS眼中的场景，
 %             并用推测的TS的航行方法进行蒙特卡洛仿真，为了保证速度，精度可以挑到200m或185.2m,甚至更大
@@ -232,7 +241,7 @@ for t=1:1:3600*2
                 SCR_temp=zeros(m,n);
                 CAL_Field=zeros(m,n);
                 ScenarioMap=zeros(m,n);
-                AFMfiled=zeros(m,n);
+                AFMfield=zeros(m,n);
                 PeakValue=100;
                 %0223 经过试验发现，在中间位置的时候，几艘船的航迹很诡异，4号船甚至开始震荡，
                 % 究其原因应该是在中间位置各个障碍物的各种场的叠加非常严重，导致无法正常决策
@@ -294,6 +303,7 @@ for t=1:1:3600*2
                 end
                 RiskLabel=[1,RiskLabel];
                 Boat(OS).RiskHis=[Boat(OS).RiskHis;RiskLabel];
+                RiskMap=1./(ScenarioMap+1);  %FM的安全图
                 
                 % 绘制当前本船的航行遮罩
                 Boat_x=Boat(OS).pos(1,1);
@@ -302,32 +312,14 @@ for t=1:1:3600*2
                 Shiplength = ShipSize(OS,1);
                 alpha=30;
                 R=500;
-                AFMfiled=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
-                ScenarioMap=1+ScenarioMap+AFMfiled;
-                
-                %                 %% 绘图测试
-                %                 figure;
-                %                 kk1=mesh(X,Y,ScenarioMap);
-                %                 colorpan=ColorPanSet(6);
-                %                 colormap(colorpan);%定义色盘
-                %                 hold on
-                %                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-                %                 hold on;
-                %                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-                %                 axis equal
-                %                 axis off
-                %
-                %                 figure
-                %                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
-                %                 colorpan=ColorPanSet(6);
-                %                 colormap(colorpan);%定义色盘
-                %                 % set(kk2, 'LineStyle','none');
-                %                 hold on
-                %                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-                %                 hold on
-                %                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
-                
-                FM_map=1./ScenarioMap;
+                AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
+                %将Angle Guidance的势场转换为FM的引导图
+                [AG_row,AG_col]=find(AFMfield~=0);
+                AG_points=[AG_row,AG_col];
+                AG_map0=ones(size(AFMfield));
+                [AG_map, AGpaths] = FMM(AG_map0, AG_points');
+                FM_map=min(AG_map,RiskMap);
+   
                 t_count32=toc;
                 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
                 %%寻找指引点
@@ -366,8 +358,10 @@ for t=1:1:3600*2
                 end
                 
                 %% FM算法主程序
+                %FMM函数在路径规划时，输入的起点终点输出的路径点xy都是反的
                 start_point(1,1) = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
                 start_point(1,2) = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
+                
                 
                 if  Danger_TS==OS   %即当前没有风险船，目标点为终点
                     
@@ -406,6 +400,8 @@ for t=1:1:3600*2
                 
                 Boat(OS).End=[Boat(OS).End;t,Danger_TS,end_point];
                 
+                start_point=fliplr(start_point);
+                end_point=fliplr(end_point);
                 if size(Boat(OS).End,1)>1 && norm(Boat(OS).End(end-1,3:4)-end_point)<=2 ... %不是第一次运算的话，需要判断是否要维持上次的决策
                         && Boat(OS).Current_row <= size(Boat(OS).path,1)-10         %当预决策的path只剩不到30个点时，强制重新计算
                     disp('目标位置变动不大，则不计算');
@@ -425,17 +421,17 @@ for t=1:1:3600*2
                     end
                     
                     t_count21=toc;
-                    [Mtotal, paths] = FMM(FM_map, end_point', start_point');
+                    
+                    [Mtotal, paths] = FMM(FM_map, start_point',end_point');%注意起点和终点的位置
                     Boat(OS).FM_lable=Boat(OS).FM_lable+1;
-                    path0 = paths{:};
-                    path0 =path0';
+                    FinalMap=Mtotal;
+                    FMpath0 = paths{:};
+                    path0=fliplr(FMpath0');
                     
                     posData = zeros(size(path0));
                     posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
                     posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
                     
-                    end_point(1)=end_point(1)*Res-MapSize(1)*1852;
-                    end_point(2)=end_point(2)*Res-MapSize(2)*1852;
                     Boat(OS).path=posData;
                     Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
                     Boat(OS).decision_count=1;
@@ -449,25 +445,25 @@ for t=1:1:3600*2
     if t==1000
         Boat1000=Boat;
         t1000=t_count12;
-        save('data0226-1500','Boat1000','t1000');
+        save('data0228-2300','Boat1000','t1000');
         disp('1000s数据已保存');
         clear Boat1000
     elseif t==1500
         Boat1500=Boat;
         t1500=t_count12;
-        save('data0226-1500','Boat1500','t1500','-append');
+        save('data0228-2300','Boat1500','t1500','-append');
         disp('1500s数据已保存');
         clear Boat1500
     elseif t==2000
         Boat2000=Boat;
         t2000=t_count12;
-        save('data0226-1500','Boat2000','t2000','-append');
+        save('data0228-2300','Boat2000','t2000','-append');
         disp('2000s数据已保存');
         clear Boat2000
     elseif t==2500
         Boat2500=Boat;
         t2500=t_count12;
-        save('data0226-1500','Boat2500','t2500','-append');
+        save('data0228-2300','Boat2500','t2500','-append');
         disp('2500s数据已保存');
         clear Boat2500
     end
