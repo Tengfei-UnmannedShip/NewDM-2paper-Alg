@@ -6,9 +6,9 @@ Res=18.52*2;  %Resolution地图的分辨率
 [m,n]=size(X);
 
 %% 每艘船路径规划，W1～4为每一艘船当前的FMM输入地图，start和end分别为起点和终点
-FM_map=W1;
-start_point=start1;
-end_point=end1;
+FM_map=W4+0.0001;
+start_point=start4;
+end_point=end4;
 %%注释：经测试，发现只有W1,start1,end1即第一艘船时可以正常运行，
 % 其他2～4艘船虽然都是按照同样的方式生成的，但是无法运行
 % 经过检查发现问题在于，船2～4时，FMM函数中第12行[D,~] = perform_fast_marching(W, start_points, options); 
