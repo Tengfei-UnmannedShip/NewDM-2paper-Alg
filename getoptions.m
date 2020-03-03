@@ -20,7 +20,7 @@ end
 %Determine whether input is structure array field
 if isfield(options, name)   
     
-    v = eval(['options.' name ';']);
+    v = eval(['options.' name ';']);  %eval函数在文本字符串中执行MATLAB表达式
 elseif mendatory
     error(['You have to provide options.' name '.']);
 end 

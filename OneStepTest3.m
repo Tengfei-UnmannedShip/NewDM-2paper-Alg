@@ -91,7 +91,7 @@ for i=1:1:Boat_Num
     
 end
 tic
-OS=1;
+OS=4
 Boat(OS).CAL=CAL0(OS,:);
 
 %% 建立本船的航行场
@@ -142,17 +142,17 @@ for TS=1:1:Boat_Num
             Boat_Speed = Boat(TS).SOG(end,:);
             Shiplength = ShipSize(TS,1);
             
-            SCR_temp= ShipDomain( pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
+            SCR_temp= ShipDomain( pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,50,2);
             
             %计算避碰规则下的风险场，规则场RuleField
             
             cro_angle=abs(Boat(OS).COG_deg-Boat(TS).COG_deg);
-            disp(['本船（',num2str(Boat(OS).COG_deg),'）与',num2str(OS),'号船（',num2str(Boat(TS).COG_deg),'）夹角为',num2str(cro_angle)]);
+            disp(['本船（',num2str(Boat(OS).COG_deg),'）与',num2str(TS),'号船（',num2str(Boat(TS).COG_deg),'）夹角为',num2str(cro_angle)]);
             
             CAL=Boat(OS).CAL(TS);
             Rule_eta=2;
             Rule_alfa=0.1;
-            CAL_Field= RuleField(pos_ts(1),pos_ts(2),Boat_theta,cro_angle,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,50,CAL);
+            CAL_Field= RuleField(pos_ts(1),pos_ts(2),Boat_theta,cro_angle,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,30,CAL);
             ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
         end
     else
@@ -169,7 +169,7 @@ Boat_x=Boat(OS).pos(1,1);
 Boat_y=Boat(OS).pos(1,2);
 Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
 Shiplength = ShipSize(OS,1);
-alpha=30;
+alpha=30;    %30度在2*18.52的分辨率上太小了，在最后的AG_map上开口处会有一个诡异的尖刺，是由于开口附近的两个方格连在一起了
 R=500;
 AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
 [AG_row,AG_col]=find(AFMfield~=0);
@@ -177,33 +177,6 @@ AG_points=[AG_row,AG_col];
 AG_map0=ones(size(AFMfield));
 [AG_map, AGpaths] = FMM(AG_map0, AG_points');
 FM_map=min(AG_map,RiskMap);
-% figure
-% mesh(X,Y,AG_map);
-% figure
-% contourf(X,Y,AG_map);
-
-%                 %% 绘图测试
-%                 figure;
-%                 kk1=mesh(X,Y,ScenarioMap);
-%                 colorpan=ColorPanSet(6);
-%                 colormap(colorpan);%定义色盘
-%                 hold on
-%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-%                 hold on;
-%                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-%                 axis equal
-%                 axis off
-%
-%                 figure
-%                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
-%                 colorpan=ColorPanSet(6);
-%                 colormap(colorpan);%定义色盘
-%                 % set(kk2, 'LineStyle','none');
-%                 hold on
-%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-%                 hold on
-%                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
-
 
 t_count32=toc;
 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
@@ -246,11 +219,12 @@ end
 start_point(1,2) = round((Boat(OS).pos(1,1)+MapSize(1)*1852)/Res);
 start_point(1,1) = round((Boat(OS).pos(1,2)+MapSize(2)*1852)/Res);
 
+% Danger_TS=OS;
 
 if  Danger_TS==OS   %即当前没有风险船，目标点为终点
     
-    end_point(1,1) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
-    end_point(1,2) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
+    end_point(1,2) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
+    end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
     disp('当前没有风险船，目标点为终点');
     
 else     %最危险的船即为当前的目标位置路径点
@@ -308,9 +282,11 @@ else
     end
     
     t_count21=toc;
-
-%     [Mtotal, paths] = FMM(FM_map, end_point',start_point');
-[Mtotal, paths] = FMM(FM_map, start_point',end_point');
+    
+    %     [Mtotal, paths] = FMM(FM_map, end_point',start_point');
+    [Mtotal, paths] = FMM(FM_map,start_point',end_point');
+    t_count22=toc;
+    disp([num2str(OS),'号船路径规划用时: ',num2str(t_count22-t_count21)]);
     Boat(OS).FM_lable=Boat(OS).FM_lable+1;
     FinalMap=Mtotal;
     FMpath0 = paths{:};
@@ -333,29 +309,35 @@ end
 %% 绘图
 % 绘图测试
 figure
+subplot(2,2,1)
 mesh(X,Y,FM_map);
 title('当前输入地图')
 % figure
 % mesh(X,Y,RiskMap);
 % title('当前船舶安全图')
-% figure
-% mesh(X,Y,GuidanceMap);
-% title('当前导引图')
-figure
-mesh(X,Y,FinalMap)
+subplot(2,2,2)
+contourf(X,Y,AFMfield);
+title('当前导引图')
 
+subplot(2,2,3)
+mesh(X,Y,FinalMap)
+title(['当前',num2str(OS),'号船FM生成图'])
+
+% subplot(2,2,4)
 figure
-kk0=contourf(X,Y,FinalMap);  %带填充颜色的等高线图
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
+kk0=contourf(X,Y,FM_map);  %带填充颜色的等高线图
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
 hold on
 
 plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
 hold on
 plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
 hold on
-plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
+plot(Boat(OS).path(:, 1), Boat(OS).path(:, 2), 'r-');
+
 hold on
+plot(end_point1(1),end_point1(2),'r*');
 
 plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
 hold on
@@ -370,8 +352,7 @@ hold on
 plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
 hold on
 plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-hold on
-plot(end_point1(1),end_point1(2),'r*');
+
 
 axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
 set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
@@ -385,44 +366,3 @@ title('当前FM导出图')
 
 box on;
 
-
-
-% 
-% figure
-% kk2=contourf(X,Y,safetymap);  %带填充颜色的等高线图
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% hold on
-% 
-% plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
-% hold on
-% plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
-% hold on
-% plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
-% hold on
-% 
-% plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
-% hold on
-% plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
-% hold on
-% 
-% plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
-% hold on
-% plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
-% hold on
-% 
-% plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
-% hold on
-% plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-% hold on
-% plot(end_point(1),end_point(2),'r*');
-% 
-% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
-% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-% grid on;
-% xlabel('\it n miles', 'Fontname', 'Times New Roman');
-% ylabel('\it n miles', 'Fontname', 'Times New Roman');
-% box on;

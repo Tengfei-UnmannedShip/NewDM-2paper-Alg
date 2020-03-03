@@ -120,5 +120,7 @@ end
 Q = Q+1;
 
 % replace C 'Inf' value (1e9) by Matlab Inf value.
-D(D>1e8) = Inf;
+D(D>1e8) = Inf;  %Ô­³ÌĞò
+% D(D>1e8) = 1e8;
+
 end

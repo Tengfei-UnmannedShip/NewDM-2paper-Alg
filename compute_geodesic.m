@@ -58,13 +58,16 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function path = compute_discrete_geodesic(D,x)
-
 % compute_discrete_geodesic - extract a discrete geodesic in 2D and 3D
 % 提取2D和3D中的离散测地线
-%   path = compute_discrete_geodesic(D,x);
-%
 %   Same as extract_path_xd but less precise and more robust.
-%
+%   与extract_path_xd相同，但精度较低且更健壮。
+% 
+% 报错时用法：在函数compute_geodesic>extract_path_2d (line 205)中
+% path = [path; compute_discrete_geodesic(A, round(path(end,:)))'];
+% 输入：A(D)是用perform_fast_marching生成的地图
+%      path(x)
+
 %   Copyright (c) 2007 Gabriel Peyre
 
 nd = 2;
@@ -72,15 +75,22 @@ if size(D,3)>1
     nd = 3;
 end
 
-x = x(:);
-path = round(x(1:nd));
+x = x(:);  %将x变成一列
+%x = x(:)的含义%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 若x是矩阵，则把x矩阵按列拆分后纵向排列成一个大的列向量
+% 若x是行向量，则相当于转置
+% 若x是列向量则不变
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+path = round(x(1:nd));  %提取最上面的两个数，即起始点的坐标(2维或3维)
 
-% admissible moves
+% admissible moves 允许的动作
 if nd==2
     dx = [1 -1 0 0];
     dy = [0 0 1 -1];
     dz = [0 0 0 0];
-    d = cat(1,dx,dy);
+    d = cat(1,dx,dy);  %d=[dx;dy]
+    %cat函数:沿指定维度连接数组。
+    
     vprev = D(x(1),x(2));
 else
     dx = [1 -1 0 0 0 0];
@@ -107,6 +117,7 @@ while true
     end
     [v,J] = min(D(I));
     x = x(:,J);
+    % 有报错记录是由于vprev=Inf，因此while永远不会结束
     if v>vprev
         return;
     end
