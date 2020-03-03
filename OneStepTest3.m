@@ -91,7 +91,7 @@ for i=1:1:Boat_Num
     
 end
 tic
-OS=4
+OS=3
 Boat(OS).CAL=CAL0(OS,:);
 
 %% 建立本船的航行场

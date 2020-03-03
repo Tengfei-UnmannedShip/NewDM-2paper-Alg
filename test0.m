@@ -10,43 +10,43 @@ Res=18.52*2;  %Resolution地图的分辨率
 % mesh(X,Y,D1*100);
 % title('1号船导引图')
 
-% figure
-% subplot(2,2,1)
-% contourf(X,Y,W1*100,10);
-% title('1号船导引图')
-% subplot(2,2,2)
-% contourf(X,Y,W2*100,10);
-% title('2号船导引图')
-% subplot(2,2,3)
-% contourf(X,Y,W3*100,10);
-% title('3号船导引图')
-% subplot(2,2,4)
-% contourf(X,Y,W4*100,10);
-% title('4号船导引图')
-
-W11=W1;
-W11(W11>0)=10;
-W21=W2;
-W21(W21>0)=10;
-W31=W3;
-W31(W31>0)=10;
-W41=W4;
-W41(W41>0)=10;
-
 figure
 subplot(2,2,1)
-contourf(X,Y,W11*100,10);
+contourf(X,Y,W1*100,10);
 title('1号船导引图')
 subplot(2,2,2)
-contourf(X,Y,W21*100,10);
+contourf(X,Y,W2*100,10);
 title('2号船导引图')
 subplot(2,2,3)
-contourf(X,Y,W31*100,10);
+contourf(X,Y,W3*100,10);
 title('3号船导引图')
 subplot(2,2,4)
-contourf(X,Y,W41*100,10);
+contourf(X,Y,W4*100,10);
 title('4号船导引图')
 
+% W11=W1;
+% W11(W11>0)=10;
+% W21=W2;
+% W21(W21>0)=10;
+% W31=W3;
+% W31(W31>0)=10;
+% W41=W4;
+% W41(W41>0)=10;
+% 
+% figure
+% subplot(2,2,1)
+% contourf(X,Y,W11*100,10);
+% title('1号船导引图')
+% subplot(2,2,2)
+% contourf(X,Y,W21*100,10);
+% title('2号船导引图')
+% subplot(2,2,3)
+% contourf(X,Y,W31*100,10);
+% title('3号船导引图')
+% subplot(2,2,4)
+% contourf(X,Y,W41*100,10);
+% title('4号船导引图')
+% 
 
 
 
