@@ -25,7 +25,10 @@ function [pt,dudt,fofthandle] = interparc(t,px,py,varargin) % #ok<FNDEF>
 %        it specifies the number of equally spaced
 %        points in arclength to be generated along
 %        the curve.
-%
+% 0 <= t <= 1的数字向量，定义沿曲线的小数距离以在曲线上插值。 
+% t = 0将生成点列表中的第一个点，而t = 1则生成该列表中的最后一个点。 
+% 类似地，当曲线由参数样条插值时，t = 0.5将在弧长上产生曲线的中点。 
+% 如果t是一个标量整数，至少为2，则它指定要沿曲线生成的弧长上等距点的数量。
 %  px, py, pz, ... - vectors of length n, defining
 %        points along the curve. n must be at least 2.
 %        Exact Replicate points should not be present

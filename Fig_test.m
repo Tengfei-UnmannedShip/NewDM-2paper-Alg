@@ -24,7 +24,7 @@ Res=50;  %Resolution地图的分辨率
 % hold on
 % plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
 % hold on
-% plot(Boat(1).HisPos(:, 2), Boat(1).HisPos(:, 3), 'r-');
+% plot(Boat(1).HisPos(:, 2), Boat(1).HisPos(:, 3), 'ro');
 % hold on
 % 
 % 
@@ -32,7 +32,7 @@ Res=50;  %Resolution地图的分辨率
 % hold on
 % plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
 % hold on
-% plot(Boat(2).HisPos(:, 2), Boat(2).HisPos(:, 3), 'b-');
+% plot(Boat(2).HisPos(:, 2), Boat(2).HisPos(:, 3), 'bo');
 % hold on
 % 
 % 
@@ -40,7 +40,7 @@ Res=50;  %Resolution地图的分辨率
 % hold on
 % plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
 % hold on
-% plot(Boat(3).HisPos(:, 2), Boat(3).HisPos(:, 3), 'g-');
+% plot(Boat(3).HisPos(:, 2), Boat(3).HisPos(:, 3), 'go');
 % hold on
 % 
 % 
@@ -48,7 +48,7 @@ Res=50;  %Resolution地图的分辨率
 % hold on
 % plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
 % hold on
-% plot(Boat(4).HisPos(:, 2), Boat(4).HisPos(:, 3), 'k-');
+% plot(Boat(4).HisPos(:, 2), Boat(4).HisPos(:, 3), 'ko');
 % 
 % 
 % axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
@@ -70,8 +70,8 @@ plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
 hold on
 plot(Boat(1).HisPos(:, 2), Boat(1).HisPos(:, 3), 'r-');
 hold on
-% plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
-% hold on
+plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-.');
+hold on
 
 plot(Boat(2).HisPos(1,2),Boat(2).HisPos(1,3),'bo');
 hold on
@@ -79,7 +79,7 @@ plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
 hold on
 plot(Boat(2).HisPos(:, 2), Boat(2).HisPos(:, 3), 'b-');
 hold on
-% plot(Boat(2).path(:, 1), Boat(2).path(:, 2), 'b-');
+% plot(Boat(2).path(:, 1), Boat(2).path(:, 2), 'bo');
 % hold on
 
 plot(Boat(3).HisPos(1,2),Boat(3).HisPos(1,3),'go');
@@ -88,7 +88,7 @@ plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
 hold on
 plot(Boat(3).HisPos(:, 2), Boat(3).HisPos(:, 3), 'g-');
 hold on
-% plot(Boat(3).path(:, 1), Boat(3).path(:, 2), 'g-');
+% plot(Boat(3).path(:, 1), Boat(3).path(:, 2), 'go');
 % hold on
 
 plot(Boat(4).HisPos(1,2),Boat(4).HisPos(1,3),'ko');
@@ -97,7 +97,7 @@ plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
 hold on
 plot(Boat(4).HisPos(:, 2), Boat(4).HisPos(:, 3), 'k-');
 hold on
-% plot(Boat(4).path(:, 1), Boat(4).path(:, 2), 'k-');
+% plot(Boat(4).path(:, 1), Boat(4).path(:, 2), 'ko');
 
 
 % axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
