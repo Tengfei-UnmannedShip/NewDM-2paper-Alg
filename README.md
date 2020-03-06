@@ -31,6 +31,15 @@
 ## 路径规划算法改用FM方法（0215/2020）
 FastMatching算法，又叫光程法，要求风险越大的地方值越小。此处采取了一个取巧的方法，即把APF图加1，整体取倒数，这样原来是0的地方（即无风险区域）现在为1，取倒数之后还是1，风险越大的地方值越小。
 
-FM的程序采用了网上的FM算法工具箱。
+FM的程序采用了Matlab FM算法工具箱。
 
 FMmainV25是第一个可以完整运行的版本，耗时18分钟。结果存储在0220.mat中，主要问题在由于没有航向角的限制，轨迹非常奇怪。
+
+最终可以运行的版本中讲程序的主要部分都编成了函数。
+
+## 针对FM的贝叶斯推测方法
+贝叶斯推测方法参考[1]并根据FM方法进行了改进。具体如下：
+1.参考文献的核心公式为4个，分别为
+
+
+[1] Best G, Fitch R. Bayesian intention inference for trajectory prediction with an unknown goal destination[J]. IEEE International Conference on Intelligent Robots and Systems, IEEE, 2015, 2015-Decem: 5817–5823.
