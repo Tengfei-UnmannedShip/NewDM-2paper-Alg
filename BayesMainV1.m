@@ -43,13 +43,15 @@
 %   (5.5版本)CAL固定时的路径规划，最终成型
 %       步骤1：消除锯齿：重新决策时转换回栅格坐标则不转换了，直接从栅格坐标里找到对应项后以此作为起点。
 %       步骤2：整合成函数：把个部分都整合成函数，主程序只提供时序
-% 5.(6.0版本)加上CAL推测，放大精度，蒙特卡洛方法计算多次的预测结果，并进行贝叶斯估计
-%       步骤1：根据监测范围和风险船的数目确定场景数，根据不同的场景生成推测的TS眼中的场景，
+% 5.(6.0版本)加上CAL推测，放大精度，蒙特卡洛方法计算多次的贝叶斯估计和结果预测
+%     总体思路：根据监测范围和风险船的数目确定场景数，根据不同的场景生成推测的TS眼中的场景，
 %             并用推测的TS的航行方法进行蒙特卡洛仿真，为了保证速度，精度可以挑到200m或185.2m,甚至更大
+%       步骤1：在OS视角中，确定每一个要分析的TSi，进入TSi视角。
 %       步骤2：
 %       步骤3：
-%
-%
+%       步骤4：
+%       步骤5：
+%       步骤6：
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -147,7 +149,7 @@ for i=1:1:Boat_Num
     Boat(i).Current_row=0;
     Boat(i).RiskHis=[];
     Boat(i).End=[];         %记录危险船舶历史
-    
+    Boat(i).InferHis=[];
 end
 
 for t=1:1:6    %tMax*2
@@ -191,13 +193,155 @@ for t=1:1:6    %tMax*2
                     % 不推测，即不改变CAL，即按照最初的CAL，每艘船都知道彼此的CAL
                     Boat(OS).CAL=CAL0(OS,:);
                 elseif  shipLabel(OS,2)==1
-                    % 贝叶斯推测
-                    
-                    
-                    
-                    
-                    
-                    
+                    %% 开始贝叶斯推测--测试通过后变成函数
+                    % 推测的步骤
+                    % 步骤1.公式(1)更新当前位置分布
+                    % 步骤2.公式(2)更新当前的意图分布
+                    % 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
+                    % 步骤4.每一个点云的位置作为终点，终点坐标输入FM，生成n条路径
+                    % 步骤5.每一个路径回归到点，每一个路径点计数
+                    if  Boat(OS).infer_label==0   %之前没有推测过，这是第一次
+                        Theta=[];
+                        for  TS=1:1:Boat_Num
+                            v_os      = Boat(OS).speed;
+                            course_os = Boat(OS).COG_deg;
+                            pos_os    = Boat(OS).pos;
+                            v_ts      = Boat(TS).speed;
+                            course_ts = Boat(TS).COG_deg;
+                            pos_ts    = Boat(TS).pos;
+                            CPA_temp  = computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
+                            if DCPA_temp<=1852 && TCPA_temp>1   %TCPA>1即排除啊当前位置为CPA的情况
+                                CurrentRisk=1; %有碰撞风险为1
+                            else
+                                CurrentRisk=0;
+                            end
+                            if TS~=OS && CurrentRisk==1
+                                % 正式开始TS视角的推测，这时TS就成了OS眼中的OS，一切从TS出发
+                                % 输入：当前可以观测到的各种状态量
+                                % 输出：推测的TS状态
+                                %      1.TS对其他船的CAL??给出0/1的CAL向量和概率值，形式如下：
+                                %        TS的CAL历史，详细记录每一次的CAL的预测结果
+                                %        CalHis_TS=[t,TS,ts_infer,0,Pr(CAL=0);
+                                %                   t,TS,ts_infer,0,Pr(CAL=0) ];
+                                %        TS的CAL推测结果，取概率最大的值，没有碰撞风险的船取初始值补齐，例如：
+                                %        CAL_TS=[0,1,1,0]
+                                %      2.OS推测的TS的可能路径，是一张地图PreMap_TS，每一点是TS可能经过的位置的计数
+                                %      3.最终，给OS的返回值：
+                                %        Boat(OS).Infer(TS).InferHis=CalHis_TS%累积
+                                %        Boat(OS).Infer(TS).CAL=[t,CAL_TS]%累积
+                                %        Boat(OS).Infer(TS).PreMap=PreMap_TS%每次更新
+                                
+                                PrTheta0=[t,TS,TS,1];
+                                Theta0=[t,TS,TS,Boat(TS).goal,PrTheta0(1,4)];   %第一行是TS的目标点，如果TS不决策，也就是直接向着这一点去
+                                ScenarioMap=zeros(m,n);
+                                %第0步，找到所有theta，当不是初始状态时，则直接沿用上个时刻的theta，只推测和预测
+                                for ts_infer=1:1:Boat_Num
+                                    v_os      = Boat(TS).speed;
+                                    course_os = Boat(TS).COG_deg;
+                                    pos_os    = Boat(TS).pos;
+                                    v_ts      = Boat(ts_infer).speed;
+                                    course_ts = Boat(ts_infer).COG_deg;
+                                    pos_ts    = Boat(ts_infer).pos;
+                                    CPA_temp  = computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
+                                    if DCPA_temp<=1852 && TCPA_temp>1   %TCPA>1即排除啊当前位置为CPA的情况
+                                        CurrentRisk_TS=1; %有碰撞风险为1
+                                    else
+                                        CurrentRisk_TS=0;
+                                    end
+                                    if ts_infer~=TS && CurrentRisk_TS==1 %TS视角下，ts_infer(包括本船OS)和TS的确有碰撞风险
+                                        
+                                        Boat_theta = -Boat(ts_infer).COG_rad; %此处为弧度制
+                                        Boat_Speed = Boat(ts_infer).SOG;
+                                        Shiplength = ShipSize(ts_infer,1);
+                                        
+                                        SCR_temp= ShipDomain(pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
+                                        
+                                        %计算避碰规则下的风险场，规则场RuleField
+                                        cro_angle=abs(Boat(TS).COG_deg-Boat(ts_infer).COG_deg);
+                                        CAL=CAL0(TS,ts_infer);
+                                        Rule_eta=2;
+                                        Rule_alfa=0.1;
+                                        CAL_Field0=RuleField(pos_ts(1),pos_ts(2),Boat_theta,cro_angle,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,200,0);
+                                        CAL_Field1=RuleField(pos_ts(1),pos_ts(2),Boat_theta,cro_angle,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,200,1);
+                                        
+                                        changeLabel = 0; %不可变路径点
+                                        WayPoint_temp =  WayPoint(pos_os,course_ts,pos_ts,Shiplength,changeLabel);
+                                        %此时本船应从目标船船头(fore section)过，即为船头的目标点
+                                        WP1 = WayPoint_temp(1,1:2);
+                                        %此时本船应从目标船船尾(aft section)过，即为船尾的目标点
+                                        WP2 = WayPoint_temp(1,3:4);
+                                        %第一次推测，因此使用预设的CAL0
+                                        if CAL0(TS,ts_infer)==0
+                                            Pr1=0.8;   %从WP1过的可能性大
+                                            Pr2=0.2;
+                                        elseif CAL0(TS,ts_infer)==1
+                                            Pr1=0.2;
+                                            Pr2=0.8;   %从WP2过的可能性大
+                                        end
+                                        
+                                        PrTheta0=[PrTheta0;t,TS,ts_infer,Pr1;t,TS,ts_infer,Pr2];
+                                        infer_line=size(PrTheta0,1);
+                                        Theta0  =[Theta0;
+                                            t,TS,ts_infer,WP1,Pr1;
+                                            t,TS,ts_infer,WP2,Pr2];
+                                        CAL_Field=Pr1*CAL_Field0+Pr2*CAL_Field1;
+                                        ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
+                                    end
+                                end          %完成对TS所有可能theta的收集
+                                % 进入TS的贝叶斯推测，准备工作，生成FM风险图
+                                RiskMap=1./(ScenarioMap+1);
+                                
+                                % 绘制当前本船的航行遮罩
+                                Boat_x=Boat(TS).pos(1,1);
+                                Boat_y=Boat(TS).pos(1,2);
+                                Boat_theta=-Boat(TS).COG_rad; %此处为弧度制
+                                % Shiplength = ShipSize(OS,1);
+                                alpha=30;   
+                                R=500;
+                                AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
+                                [AG_row,AG_col]=find(AFMfield~=0);
+                                AG_points=[AG_row,AG_col];
+                                AG_map0=ones(size(AFMfield));
+                                [AG_map, ~] = FMM(AG_map0, AG_points');
+                                FM_map=min(AG_map,RiskMap);
+                                
+                                start_point(1,2) = round((Boat_x+MapSize(1)*1852)/Res);
+                                start_point(1,1) = round((Boat_y+MapSize(2)*1852)/Res);
+                                step_length=[Res,Res];
+                                while  FM_map(start_point(1),start_point(2))<0.001
+                                    start_temp = ang_point(Boat_x,Boat_y,Boat(OS).COG_deg,step_length);
+                                    start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res);
+                                    start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res);
+                                    step_length=step_length+step_length;
+                                end
+
+                                % 步骤1.公式(1)更新当前位置分布
+                                
+                                % 步骤2.公式(2)更新当前的意图分布
+                                % 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                
+                                % 最终，给OS的返回值：
+                                Boat(OS).Infer(TS).InferHis=CalHis_TS;       %累积
+                                Boat(OS).Infer(TS).CAL=[t,CAL_TS];           %累积
+                                Boat(OS).Infer(TS).PreMap=PreMap_TS;         %每次更新,只需要CAL的时候可以不用
+                                
+                            end
+                        end
+                    else     %之前推测过，这次是对上次的修正
+                        
+                        
+                        
+                        % 经过5～6轮推测，结果是CAL不变，维持预测，则下一次还是按照当前的CAL决策，
+                        % 如果CAL改变，则Boat(OS).infer_label归0，下次重新预测
+                    end
                     Boat(OS).CAL=CAL0(OS,:); %贝叶斯推断最后得出的，还是当前时刻的Boat(i).CAL
                 end
                 Boat0=Boat;
@@ -206,32 +350,32 @@ for t=1:1:6    %tMax*2
             end
         end
     end
-
-        if t==1000
-            Boat1000=Boat;
-            t1000=t_count12;
-            save('data0306-0100','Boat1000','t1000');
-            disp('1000s数据已保存');
-            clear Boat1000
-        elseif t==1500
-            Boat1500=Boat;
-            t1500=t_count12;
-            save('data0306-0100','Boat1500','t1500','-append');
-            disp('1500s数据已保存');
-            clear Boat1500
-        elseif t==2500
-            Boat2500=Boat;
-            t2500=t_count12;
-            save('data0306-0100','Boat2500','t2500','-append');
-            disp('2500s数据已保存');
-            clear Boat2500
-       elseif t==3500
-            Boat3500=Boat;
-            t3500=t_count12;
-            save('data0306-0100','Boat3500','t3500','-append');
-            disp('2000s数据已保存');
-            clear Boat3500
-        end
+    
+    if t==1000
+        Boat1000=Boat;
+        t1000=t_count12;
+        save('data0306-0100','Boat1000','t1000');
+        disp('1000s数据已保存');
+        clear Boat1000
+    elseif t==1500
+        Boat1500=Boat;
+        t1500=t_count12;
+        save('data0306-0100','Boat1500','t1500','-append');
+        disp('1500s数据已保存');
+        clear Boat1500
+    elseif t==2500
+        Boat2500=Boat;
+        t2500=t_count12;
+        save('data0306-0100','Boat2500','t2500','-append');
+        disp('2500s数据已保存');
+        clear Boat2500
+    elseif t==3500
+        Boat3500=Boat;
+        t3500=t_count12;
+        save('data0306-0100','Boat3500','t3500','-append');
+        disp('2000s数据已保存');
+        clear Boat3500
+    end
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
     disp('===========================================================');

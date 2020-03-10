@@ -47,7 +47,7 @@ for TS=1:1:Boat_Num
             Boat_Speed = Boat(TS).SOG(end,:);
             Shiplength = ShipSize(TS,1);
             
-            SCR_temp= ShipDomain( pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
+            SCR_temp= ShipDomain(pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
             
             %计算避碰规则下的风险场，规则场RuleField
             cro_angle=abs(Boat(OS).COG_deg-Boat(TS).COG_deg);
@@ -182,7 +182,7 @@ else
     
     t_count21=toc;
     
-    [Mtotal, paths] = FMM(FM_map,start_point',end_point');
+    [~, paths] = FMM(FM_map,start_point',end_point');
     t_count22=toc;
     disp([num2str(OS),'号船路径规划用时: ',num2str(t_count22-t_count21)]);
     Boat(OS).FM_lable=Boat(OS).FM_lable+1;
