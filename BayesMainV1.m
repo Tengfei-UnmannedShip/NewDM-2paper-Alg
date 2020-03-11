@@ -237,9 +237,9 @@ for t=1:1:6    %tMax*2
                                 % 当不是初始状态时，则直接提取沿用上个时刻的theta，只推测和预测，没有本步
                                 % 步骤0.1.1. 第一行是TS的目标点，如果TS不决策，也就是直接向着这一点去
                                 PrTheta0=[t,TS,TS,1];
-                                Theta0=[t,TS,TS,Boat(TS).goal,PrTheta0(1,4)];   
+                                Theta0=[t,TS,TS,Boat(TS).goal,PrTheta0(1,4)];
                                 ScenarioMap=zeros(m,n);
-
+                                
                                 for ts_infer=1:1:Boat_Num
                                     v_os      = Boat(TS).speed;
                                     course_os = Boat(TS).COG_deg;
@@ -257,7 +257,7 @@ for t=1:1:6    %tMax*2
                                         % 步骤0.1.2. TS视角下所有可能的路径点
                                         % 成对出现，作为路径点的theta。
                                         % 设定：一艘船有可能有风险不规避，即为失控船，但是不可能没有风险还无谓的规避。
-                                        %      一旦目标船没有风险船了，目标就只有自身的本船目标一点                           
+                                        %      一旦目标船没有风险船了，目标就只有自身的本船目标一点
                                         changeLabel = 0; %不可变路径点
                                         WayPoint_temp =  WayPoint(pos_os,course_ts,pos_ts,Shiplength,changeLabel);
                                         %此时本船应从目标船船头(fore section)过，即为船头的目标点
@@ -275,14 +275,16 @@ for t=1:1:6    %tMax*2
                                         
                                         PrTheta0=[PrTheta0;t,TS,ts_infer,Pr1;t,TS,ts_infer,Pr2];
                                         Theta0  =[Theta0;
-                                                  t,TS,ts_infer,WP1,Pr1;
-                                                  t,TS,ts_infer,WP2,Pr2];
-                                              
+                                            t,TS,ts_infer,WP1,Pr1;
+                                            t,TS,ts_infer,WP2,Pr2];
+                                        Theta=Theta0(:,4:5); %所有的theta点
+                                        Theta_end(:,1)=round((Theta(:,2)+MapSize(2)*1852)/Res);
+                                        Theta_end(:,2)=round((Theta(:,1)+MapSize(1)*1852)/Res);
                                         % 步骤0.2. 绘制当前TS眼中的风险场、规则场和引导场
-                                        % 计算避碰规则下的风险场，规则场RuleField   
+                                        % 计算避碰规则下的风险场，规则场RuleField
                                         Boat_theta = -Boat(ts_infer).COG_rad; %此处为弧度制
                                         Boat_Speed = Boat(ts_infer).SOG;
-                                        Shiplength = ShipSize(ts_infer,1);    
+                                        Shiplength = ShipSize(ts_infer,1);
                                         % 风险场
                                         SCR_temp= ShipDomain(pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
                                         cro_angle=abs(Boat(TS).COG_deg-Boat(ts_infer).COG_deg);
@@ -305,7 +307,7 @@ for t=1:1:6    %tMax*2
                                 Boat_x=Boat(TS).pos(1,1);
                                 Boat_y=Boat(TS).pos(1,2);
                                 Boat_theta=-Boat(TS).COG_rad; %此处为弧度制
-                                alpha=30;   
+                                alpha=30;
                                 R=500;
                                 
                                 AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
@@ -325,48 +327,78 @@ for t=1:1:6    %tMax*2
                                     start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res);
                                     step_length=step_length+step_length;
                                 end
-                                t_res=Res/Boat(TS)
-                                for t_infer=1:50   %预测的步数
-                                % 步骤1.   公式(1)更新当前位置分布
-                                % 步骤1.1. 找出t时刻所有的可达点Reachable
-                                % 用筛选AG_points的方法确定某一个时刻的可达点集合（r=V*(t-1),R=V*t）
+                                [Mtotal, L0_paths] = FMM(FM_map,start_point',Theta_end');
                                 
                                 
-                                % 步骤1.2. 绘制L0和L1
-                                % 找到TS从起点到theta的路径L0和TS-Reachable-theta的路径L1
-                                
-                                
-                                
-                                % 步骤1.3. 路径上对风险进行线积分InL0,InL1
-                                
-                                
-                                
-                                % 步骤1.4. 生成新的公式（1）
-                                
-                                
-                                
-                                
-                                
-                                
-                                % 步骤2.公式(2)更新当前的意图分布
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                % 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
+                                t_res=ceil(Res/Boat(TS).speed); %要保证每次至少能前进1格，总共前进50格
+                                for t_infer=1*t_res:t_res:50*t_res   %预测的步数
+                                    % 步骤1.   公式(1)更新当前位置分布
+                                    % 步骤1.1. 找出t时刻所有的可达点Reachable
+                                    % 用筛选AG_points的方法确定某一个时刻的可达点集合（r=V*(t-1),R=V*t）
+                                    r_infer=Boat(TS).speed*(t_infer-1)*t_res;
+                                    R_infer=Boat(TS).speed*t_infer*t_res;
+                                    RR_points=ReachableRange( Boat_x,Boat_y,Boat_theta,alpha,R_infer,r_infer,MapSize,Res);
+                                    % 步骤1.2. 绘制L0和L1
+                                    % 找到TS从起点到theta的路径L0和TS-Reachable-theta的路径L1
+                                    for k_theta=1:1:size(Theta,1)     %针对每一个theta
+                                        %对L0数据处理
+                                        L0_path = L0_paths{k_theta};
+                                        L0_path=rot90(L0_path',2);
+                                        L0 = zeros(size(L0_path));
+                                        L0(:,1)=L0_path(:,1)*Res-MapSize(1)*1852;
+                                        L0(:,2)=L0_path(:,2)*Res-MapSize(2)*1852;
+                                        x0=L0(1:50,1); %规划的路径平滑处理
+                                        y0=L0(1:50,2);
+                                        y_new=smooth(y0);
+                                        x_new=smooth(x0);
+                                        x_new1=smooth(x_new);
+                                        y_new1=smooth(y_new);
+                                        L0(1:50,1)=x_new1;
+                                        L0(1:50,2)=y_new1; %得出最终的L0
+                                        
+                                        for k_reach=1:1:size(RR_points,1)
+                                        %由于Reachable离得很近，可以把L0直接接上
+                                        
+                                        
+                                        % 步骤1.3. 路径上对风险进行线积分InL0,InL1
+                                        
+                                        
+                                        end
+                                        % 步骤1.4. 生成新的公式（1）
+                                        
+                                        % 步骤2.公式(2)更新当前的意图分布
+                                         
+                                    end
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                   
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    % 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
                                 end
                                 % 最终，给OS的返回值：
                                 Boat(OS).Infer(TS).InferHis=CalHis_TS;       %累积
