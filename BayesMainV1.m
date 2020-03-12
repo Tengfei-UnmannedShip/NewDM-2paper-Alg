@@ -202,6 +202,7 @@ for t=1:1:6    %tMax*2
                     % 步骤5.每一个路径回归到点，每一个路径点计数
                     if  Boat(OS).infer_label==0   %之前没有推测过，这是第一次
                         Theta=[];
+                        Theta0=[];
                         for  TS=1:1:Boat_Num
                             v_os      = Boat(OS).speed;
                             course_os = Boat(OS).COG_deg;
@@ -327,76 +328,86 @@ for t=1:1:6    %tMax*2
                                     start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res);
                                     step_length=step_length+step_length;
                                 end
-                                [Mtotal, L0_paths] = FMM(FM_map,start_point',Theta_end');
-                                
-                                
+                                [~, L0_paths] = FMM(FM_map,start_point',Theta_end');
+                                % 得出的InferMap和L0_paths的都是先验的
+                                % 1.InferMap是FMM方法得出的以当前TS位置为起点的上一个时刻的CAL概率为先验概率的地图
+                                % 2.L0_paths是当前的所有theta得出的初步的路径
+                                % 步骤1.   公式(1)更新当前位置分布
+                                % 步骤1.1. 绘制L0，计算风险积分
+                                % 找到TS从起点到theta的路径L0
+                                Theta_L0=[];
+                                for k_theta=1:1:size(Theta,1)     %针对每一个theta
+                                    %对L0数据处理,风险积分是在栅格上求的，所有的贝叶斯推断都是在栅格上求的
+                                    L0 = L0_paths{k_theta};
+                                    L0=rot90(L0',2);
+                                    L0_integral=RiskIntegral(L0,FM_map);
+                                    
+                                    Theta_L0=[Theta_L0;L0_integral];
+                                end
+                                Theta0=[Theta0,Theta_L0];
                                 t_res=ceil(Res/Boat(TS).speed); %要保证每次至少能前进1格，总共前进50格
                                 for t_infer=1*t_res:t_res:50*t_res   %预测的步数
-                                    % 步骤1.   公式(1)更新当前位置分布
-                                    % 步骤1.1. 找出t时刻所有的可达点Reachable
+                                    
+                                    % 步骤1.2. 找出t时刻所有的可达点Reachable
                                     % 用筛选AG_points的方法确定某一个时刻的可达点集合（r=V*(t-1),R=V*t）
                                     r_infer=Boat(TS).speed*(t_infer-1)*t_res;
                                     R_infer=Boat(TS).speed*t_infer*t_res;
                                     RR_points=ReachableRange( Boat_x,Boat_y,Boat_theta,alpha,R_infer,r_infer,MapSize,Res);
-                                    % 步骤1.2. 绘制L0和L1
-                                    % 找到TS从起点到theta的路径L0和TS-Reachable-theta的路径L1
-                                    for k_theta=1:1:size(Theta,1)     %针对每一个theta
-                                        %对L0数据处理
-                                        L0_path = L0_paths{k_theta};
-                                        L0_path=rot90(L0_path',2);
-                                        L0 = zeros(size(L0_path));
-                                        L0(:,1)=L0_path(:,1)*Res-MapSize(1)*1852;
-                                        L0(:,2)=L0_path(:,2)*Res-MapSize(2)*1852;
-                                        x0=L0(1:50,1); %规划的路径平滑处理
-                                        y0=L0(1:50,2);
-                                        y_new=smooth(y0);
-                                        x_new=smooth(x0);
-                                        x_new1=smooth(x_new);
-                                        y_new1=smooth(y_new);
-                                        L0(1:50,1)=x_new1;
-                                        L0(1:50,2)=y_new1; %得出最终的L0
-                                        
-                                        for k_reach=1:1:size(RR_points,1)
-                                        %由于Reachable离得很近，可以把L0直接接上
-                                        
-                                        
-                                        % 步骤1.3. 路径上对风险进行线积分InL0,InL1
-                                        
-                                        
+                                    % 步骤1.3. 绘制L1计算线积分
+                                    % 对每一个RR_point找到对应的TS-Reachable-theta的路径L1
+                                    Reachs_L1=[];
+                                    for k_reach=1:1:size(RR_points,1)
+                                        Reach_point=RR_points(k_reach,:);
+                                        start_point(1,2) = round((Reach_point(1)+MapSize(1)*1852)/Res);
+                                        start_point(1,1) = round((Reach_point(2)+MapSize(2)*1852)/Res);
+                                        [~, L1_paths] = FMM(FM_map,start_point',Theta_end');
+                                        %重复一遍对L0的计算，只是起点变成了Reach_point
+                                        Reach_L1=[];
+                                        for k_theta=1:1:size(Theta,1)     %针对每一个theta
+                                            %对L0数据处理,风险积分是在栅格上求的，所有的贝叶斯推断都是在栅格上求的
+                                            L1 = L1_paths{k_theta};
+                                            L1=rot90(L1',2);
+                                            %得到的是当前点针对当前Theta的L1积分值
+                                            L1_integral=RiskIntegral(L1,FM_map);
+                                            %得到的是当前点针对所有Theta的L1积分值的行向量
+                                            Reach_L1=[Reach_L1,L1_integral];
                                         end
-                                        % 步骤1.4. 生成新的公式（1）
-                                        
-                                        % 步骤2.公式(2)更新当前的意图分布
-                                         
+                                        %得到每一行代表一个可达点，每一列是一个theta的L1
+                                        Reachs_L1=[Reachs_L1;Reach_L1];
                                     end
                                     
+                                    % 步骤1.4. 针对每一个theta生成新的公式（1）
+                                    Theta_L1=[];
+                                    PrX_eq1=[];
+                                    PrX0_eq1=[];
+                                    alpha_infer=1;
+                                    for k_theta=1:1:size(Theta,1)
+                                        ThetaL1_temp=Reachs_L1(:,k_theta);
+                                        ThetaL1=sum(ThetaL1_temp(:));      %求和得出的就是公式（1）的分母
+                                        Theta_L1=[Theta_L1,ThetaL1];       %公式（1）分母的列向量，针对每一个theta
+                                        for k_reach=1:1:size(RR_points,1)
+                                            PrX0=-alpha_infer*(Reachs_L1(k_reach,k_theta)-Theta_L0(k_theta));
+                                            PrX0=exp(PrX0);
+                                            PrX0_eq1=[PrX0_eq1,PrX0];
+                                        end
+                                        PrX_temp=[];
+                                        for k_reach=1:1:size(RR_points,1)
+                                            PrX=PrX0_eq1(k_reach)/sum(PrX0_eq1);  %可达点k_reach在k_theta下的公式（1）
+                                            PrX_temp=[PrX_temp;PrX];              %每一列为一个theta下的所有可达点
+                                        end
+                                        PrX_eq1=[PrX_eq1,PrX_temp];             %每一行为一个可达点的所有theta
+                                    end
+                                    % 步骤2.公式(2)更新当前的意图分布
+                                    % 来自树武程序
                                     
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                   
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
+                                    PrTheta(1, :) = likelihood(1, :);
+                                    for i=1:n-1     % 文献中公式(2)
+                                        PrTheta(i+1, :) = PrTheta(i, :).*PrXTheta(i, :);
+                                        PrTheta(i+1, :) = PrTheta(i+1, :)./sum(PrTheta(i+1, :)); %归一化
+                                    end
+ 
                                     
                                     % 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
                                     
                                     
                                 end
