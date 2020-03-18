@@ -1,4 +1,4 @@
-%% (6.0版本)加上贝叶斯推测
+%% 贝叶斯绘图
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
@@ -351,7 +351,9 @@ for t=1:1:6    %tMax*2
                             % 1.InferMap是FMM方法得出的以当前TS位置为起点的上一个时刻的CAL概率为先验概率的地图
                             % 2.L0_paths是当前的所有theta得出的初步的路径
                             %% 步骤1.   公式(1)更新当前位置分布，给下个时刻用
-                            [RR_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,L0_paths,Boat_theta,Boat(TS).speed,Theta,Theta_end,FM_map,MapSize,Res);
+                            
+                            [RR_points,PrX_eq1] = BayesEqu1(Boat_x,Boat_y,L0_paths,Boat_theta,Boat(TS).speed,Theta,Theta_end,FM_map,MapSize,Res);
+                            
                             %TODO 每次更新可达点和对应的值，但是Theta不一样
                             Boat(OS).infer_points(TS)=RR_points;
                             Boat(OS).PrX(TS)=PrX_eq1;

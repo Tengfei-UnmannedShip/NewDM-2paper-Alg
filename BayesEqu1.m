@@ -1,4 +1,4 @@
-function [RR_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,Boat_theta,speed,Theta,MapSize,Res)
+function [RR_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,L0_paths,Boat_theta,speed,Theta,Theta_end,FM_map,MapSize,Res)
 % 贝叶斯推断的公式1，根据当前的位置和theta计算下一步的位置分布
 % 输入：Boat_x,Boat_y,Boat_theta,speed：都是TS船的状态
 %      Theta：第0步得出的theta点的坐标和概率
@@ -17,7 +17,7 @@ for k_theta=1:1:size(Theta,1)     %针对每一个theta
     
     Theta_L0=[Theta_L0;L0_integral];
 end
-Theta0=[Theta0,Theta_L0];
+
 t_res=ceil(Res/speed); %要保证每次至少能前进1格
 
 %% 步骤1.2. 找出t时刻所有的可达点Reachable
@@ -38,7 +38,8 @@ for k_reach=1:1:size(RR_points,1)
     start_point(1,1) = Reach_point(2);
     [~, L1_paths] = FMM(FM_map,start_point',Theta_end');
     %重复一遍对L0的计算，只是起点变成了Reach_point
-    ReachPoint_L1=[];%针对每一点的所有theta
+    Reach_L1=[];    %针对每一点的所有theta
+    Reachs_L1=[];   %针对所有点的所有theta
     for k_theta=1:1:size(Theta,1)     %针对每一个theta
         %对L0数据处理,风险积分是在栅格上求的，所有的贝叶斯推断都是在栅格上求的
         L1 = L1_paths{k_theta};
