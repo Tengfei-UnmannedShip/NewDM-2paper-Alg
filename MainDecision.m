@@ -78,15 +78,16 @@ AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
 AG_points=[AG_row,AG_col];
 AG_map0=ones(size(AFMfield));
 [AG_map, ~] = FMM(AG_map0, AG_points');
-FM_map=min(AG_map,RiskMap);    %防止出现起始点或终点在0处，无法计算的情况
+FM_map=min(AG_map,RiskMap);   
 
-start_point(1,2) = round((Boat_x+MapSize(1)*1852)/Res);
-start_point(1,1) = round((Boat_y+MapSize(2)*1852)/Res);
+start_point(1,2) = round((Boat_x+MapSize(1)*1852)/Res)+1;
+start_point(1,1) = round((Boat_y+MapSize(2)*1852)/Res)+1;
 step_length=[18.52,18.52];
-while  FM_map(start_point(1),start_point(2))<0.001
+%如果start_point在FM_map的值<0.001，则无法计算路径，这里通过往前移动一小步的方法避免这一现象
+while  FM_map(start_point(1,1),start_point(1,2))<0.001
     start_temp = ang_point(Boat_x,Boat_y,Boat(OS).COG_deg,step_length);
-    start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res);
-    start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res);
+    start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res)+1;
+    start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res)+1;
     step_length=step_length+[18.52,18.52];
 end
 
@@ -127,8 +128,8 @@ for TS=1:1:Boat_Num
 end
 if  Danger_TS==OS   %即当前没有风险船，目标点为终点
     
-    end_point(1,2) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res);
-    end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res);
+    end_point(1,2) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res)+1;
+    end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res)+1;
     disp('当前没有风险船，目标点为终点');
     
 else     %最危险的船即为当前的目标位置路径点
@@ -154,8 +155,8 @@ else     %最危险的船即为当前的目标位置路径点
             disp('路径点为船尾点');
         end
         
-        end_point(1,2) =round((WP(1,1)+MapSize(1)*1852)/Res);
-        end_point(1,1) =round((WP(1,2)+MapSize(2)*1852)/Res);
+        end_point(1,2) =round((WP(1,1)+MapSize(1)*1852)/Res)+1;
+        end_point(1,1) =round((WP(1,2)+MapSize(2)*1852)/Res)+1;
         
     end
 end

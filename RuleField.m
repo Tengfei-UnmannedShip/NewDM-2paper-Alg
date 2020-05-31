@@ -16,7 +16,7 @@ Rule_r=0.5*Shiplength;        %小圆半径为0.5倍船长
 BoatX = (X-Boat_x)*cos(Boat_theta)+(Y-Boat_y)*sin(Boat_theta);
 BoatY = (Y-Boat_y)*cos(Boat_theta)-(X-Boat_x)*sin(Boat_theta);
 if angle>180-22.5 && angle<180+22.5    %小于22.5度的时候，用侧面扇形
-    disp('小于22.5度的时候，用侧面扇形');
+%     disp('小于22.5度的时候，用侧面扇形');
     if CAL==0  %此时本船对该目标船是0，即目标船为Give-way让路船
         %此时本船应从目标船船头(fore section)过，即fore section半径为小，aft section半径为大
         RuleDis=RuleDis+(1/Rule_r)*sqrt(BoatX.^2+BoatY.^2).*(BoatX>=0 & BoatY>=0);
@@ -37,7 +37,7 @@ if angle>180-22.5 && angle<180+22.5    %小于22.5度的时候，用侧面扇形
         RuleDis=zeros(m,n);
     end
 else   %大于22.5度的时候，用前后扇形
-    disp('大于22.5度的时候，用前后扇形');
+%     disp('大于22.5度的时候，用前后扇形');
     
     if CAL==0  %此时本船对该目标船是0，即目标船为Give-way让路船
         %此时本船应从目标船船头(fore section)过，即fore section半径为小，aft section半径为大

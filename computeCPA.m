@@ -1,5 +1,5 @@
 function CPA = computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,time)
-%% 基本的CPA计算但是多了一个航向时间，用于Jinfen的算法中计算每一阶段的CPA
+%% 基本的CPA计算
 %将本船和目标船的速度由(速度值+航行角)的极坐标形式转化为(Vx,Vy)的直角坐标形式
 V_x1 = v_os*sind(course_os);%WTF:sind是以角度为自变量的sin值，sin是以弧度为单位的，deg2rad将角度转换为弧度
 V_y1 = v_os*cosd(course_os);

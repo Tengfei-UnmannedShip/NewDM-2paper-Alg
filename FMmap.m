@@ -245,8 +245,8 @@ t=1;
         Boat_theta = -Boat(i).COG_rad(end,:); %此处为弧度制
         Boat_Speed = Boat(i).SOG(end,:);
         Shiplength = ShipSize(i,1);
-        
-        Boat(i).SCR = ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,2);
+        PeakValue=80;
+        Boat(i).SCR = ShipDomain( Boat_x,Boat_y,Boat_theta,Boat_Speed,Shiplength,MapSize,Res,PeakValue,2);
     end
 %% 用于FM的SCR
 % 要求：1.风险越大，值越小??所有的SCR+1；
@@ -255,14 +255,14 @@ SCR_temp=zeros(m,n);
 for  i=1:1:Boat_Num
     SCR_temp=SCR_temp+Boat(i).SCR;
 end
-FM_temp=SCR_temp+1;
-FM_map=1./FM_temp;
+% FM_temp=SCR_temp+1;
+% FM_map=1./FM_temp;
 
 figure
 kk1=mesh(X,Y,SCR_temp);
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
-axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0 150])
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0 100])
 set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
 set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
 set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
@@ -270,38 +270,38 @@ set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times
 grid on;
 xlabel('\it n miles', 'Fontname', 'Times New Roman');
 ylabel('\it n miles', 'Fontname', 'Times New Roman');
-title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
+% title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
 box off;
 
-figure
-kk2=mesh(X,Y,FM_map);
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
-axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0 1])
-set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-grid on;
-xlabel('\it n miles', 'Fontname', 'Times New Roman');
-ylabel('\it n miles', 'Fontname', 'Times New Roman');
-title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
-box off;
+% figure
+% kk2=mesh(X,Y,FM_map);
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0 1])
+% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% grid on;
+% xlabel('\it n miles', 'Fontname', 'Times New Roman');
+% ylabel('\it n miles', 'Fontname', 'Times New Roman');
+% title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
+% box off;
 
-figure
-kk3=contourf(X,Y,FM_map);  %带填充颜色的等高线图
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
-axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
-set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-grid on;
-xlabel('\it n miles', 'Fontname', 'Times New Roman');
-ylabel('\it n miles', 'Fontname', 'Times New Roman');
-title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
-box off;
+% figure
+% kk3=contourf(X,Y,FM_map);  %带填充颜色的等高线图
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% grid on;
+% xlabel('\it n miles', 'Fontname', 'Times New Roman');
+% ylabel('\it n miles', 'Fontname', 'Times New Roman');
+% title(['t=',num2str(tMax),'s'], 'Fontname', 'Times New Roman');
+% box off;
 % end
 t3=toc;
 disp(['本次运行总时间: ',num2str(t3)]);

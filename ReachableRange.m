@@ -10,9 +10,8 @@ RR_Dis=zeros(m,n);
 BoatX = (X-Boat_x)*cos(Boat_theta)+(Y-Boat_y)*sin(Boat_theta);
 BoatY = (Y-Boat_y)*cos(Boat_theta)-(X-Boat_x)*sin(Boat_theta);
 
-RR_Dis=RR_Dis+sqrt(BoatX.^2+BoatY.^2).*(BoatY<=0 & sqrt(BoatX.^2+BoatY.^2)<R & sqrt(BoatX.^2+BoatY.^2)>r );
-RR_Dis=RR_Dis+sqrt(BoatX.^2+BoatY.^2).*(BoatX>0 & BoatY>0 & BoatY< tand(90-alpha/2).*BoatX & sqrt(BoatX.^2+BoatY.^2)<R & sqrt(BoatX.^2+BoatY.^2)>r);
-RR_Dis=RR_Dis+sqrt(BoatX.^2+BoatY.^2).*(BoatX<0 & BoatY>0 & BoatY<-tand(90-alpha/2).*BoatX & sqrt(BoatX.^2+BoatY.^2)<R & sqrt(BoatX.^2+BoatY.^2)>r);
+RR_Dis=RR_Dis+sqrt(BoatX.^2+BoatY.^2).*(BoatX>0 & BoatY>0 & BoatY> tand(90-alpha/2)*BoatX & sqrt(BoatX.^2+BoatY.^2)<R & sqrt(BoatX.^2+BoatY.^2)>r);
+RR_Dis=RR_Dis+sqrt(BoatX.^2+BoatY.^2).*(BoatX<0 & BoatY>0 & BoatY>-tand(90-alpha/2)*BoatX & sqrt(BoatX.^2+BoatY.^2)<R & sqrt(BoatX.^2+BoatY.^2)>r);
 
 RR_Dis(RR_Dis>20)=100;
 [row,col]=find(RR_Dis~=0);
