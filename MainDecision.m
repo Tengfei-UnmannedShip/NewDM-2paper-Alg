@@ -1,7 +1,6 @@
 function Boat= MainDecision(Boat0,OS,Boat_Num,ShipSize,MapSize,Res,t)
-%决策函数，包括当前的FM输入地图绘制（风险地图，规则地图，引导图）
-
-
+% 决策函数，包括当前的FM输入地图绘制（风险地图，规则地图，引导图）
+% 此时Boat只更新了Boat(OS)的内容，决策也只是OS针对所有TS的
 Boat=Boat0;
 [X,~]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 [m,n]=size(X);
@@ -52,6 +51,7 @@ for TS=1:1:Boat_Num
             %计算避碰规则下的风险场，规则场RuleField
             cro_angle=abs(Boat(OS).COG_deg-Boat(TS).COG_deg);
             disp(['本船（',num2str(Boat(OS).COG_deg),'）与',num2str(TS),'号船（',num2str(Boat(TS).COG_deg),'）夹角为',num2str(cro_angle)]);
+            % 这个CAL是OS对TS的CAL，为0或1
             CAL=Boat(OS).CAL(TS);
             Rule_eta=2;
             Rule_alfa=0.1;

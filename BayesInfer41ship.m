@@ -87,6 +87,7 @@ for i=1:1:Boat_Num
     %把初始位置归一到栅格位置上，但是依然有正负
     Boat(i).pos(1,1) = round(pos0(1,1)/Res)*Res;
     Boat(i).pos(1,2) = round(pos0(1,2)/Res)*Res;
+    Boat(i).RiskHis = [];
     Boat(i).HisPos=[0,Boat(i).pos];
     %上一次决策的运算结果
     Boat(i).path = [];
@@ -104,9 +105,13 @@ for i=1:1:Boat_Num
     Boat(i).FM_lable=0; %初始时刻FM_lable为0，直到第一个时刻计算FM
     Boat(i).decision_delay=0; %初始时刻decision_delay为0，直到第一个时刻计算FM
     Boat(i).Current_row=0;
-    %     Boat(i).End=[];         %记录危险船舶历史
+    %infer_label是对目标船的推测次数的累计，初始值为0，以后对TS每推测一次，该位置上infer_label+1
     Boat(i).infer_label=zeros(1,Boat_Num);
     Boat(i).Theta_his=[];
+    
+    %每艘船的CAL初设
+    Boat(i).CAL=CAL0(i,:);       % Boat(OS).CAL是一个向量，表示OS对所有TS的CAL
+    Boat(i).CAL_infer=CAL0(i,:); % Boat(OS).CAL_infer是一个向量，用于存储推测的CAL
 end
 
 
@@ -134,7 +139,7 @@ for t=1:1:6    %tMax*2
     end
     % 判断避碰是否结束，没到终点时为1，到了为0，因此，至少3艘船到达终点后reach_label<=1
     % 如果用DCPA判断，有可能暂时的DCPA显示没有风险，但是后续还是会继续出现风险
-    if reach_label<=1    
+    if reach_label<=1
         disp([num2str(t),'时刻','所有船完成避碰，计算结束']);
         break
     end
@@ -146,7 +151,7 @@ for t=1:1:6    %tMax*2
                 && Boat(OS).reach==1
             
             if Boat(OS).decision_delay<=round(20/ShipInfo(OS,5)) &&  Boat(OS).decision_delay>0    %每次决策之后保持20s
-%                     && Boat(OS).Current_row>= size(Boat(OS).path,1)-10         %当预决策的path只剩不到50个点时，强制重新计算
+                %                     && Boat(OS).Current_row>= size(Boat(OS).path,1)-10         %当预决策的path只剩不到50个点时，强制重新计算
                 disp([num2str(t),'时刻',num2str(OS),'船第',num2str(Boat(OS).decision_delay),'周期保持上轮决策']);
                 Boat(OS).decision_delay=Boat(OS).decision_delay+1;
             else
@@ -154,7 +159,7 @@ for t=1:1:6    %tMax*2
                 %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
                 if shipLabel(OS,2)==0    % inferLabbel:是否推测:0.不推测,1.推测;
                     % 不推测，即不改变CAL，即按照最初的CAL，每艘船都知道彼此的CAL
-                    Boat(OS).CAL=CAL0(OS,:);
+                    Boat(OS).CAL_infer=CAL0(OS,:); % Boat(OS).CAL_infer是一个向量，表示OS对所有TS的CAL
                 elseif  shipLabel(OS,2)==1
                     Boat(OS).infercount=Boat(OS).infercount+1;
                     disp([' ',num2str(OS),'船第',num2str(Boat(OS).infercount),'次推测']);
@@ -166,7 +171,7 @@ for t=1:1:6    %tMax*2
                         course_ts = Boat(TS).COG_deg;
                         pos_ts    = Boat(TS).pos;
                         CPA_temp  = computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
-                        if CPA_temp(5)<=1852 && CPA_temp(6)>1   %TCPA>1即排除啊当前位置为CPA的情况
+                        if CPA_temp(5)<=1852 && CPA_temp(6)>1   %TCPA>1即排除当前位置为CPA的情况
                             CurrentRisk=1; %有碰撞风险为1
                         else
                             CurrentRisk=0;
@@ -227,10 +232,10 @@ for t=1:1:6    %tMax*2
                                     WP1 = WayPoint_temp(1,1:2);
                                     %此时本船应从目标船船尾(aft section)过，即为船尾的目标点
                                     WP2 = WayPoint_temp(1,3:4);
-                                    if  Boat(OS).infer_label(TS)==0   
-                                        %TS之前没有推测过，这是第一次，需要初始化PrTheta
+                                    if  Boat(OS).infer_label(TS)==0
+                                        % TS之前没有推测过，这是第一次，需要初始化PrTheta
                                         % 步骤0.1.1. 第一行是TS的目标点，如果TS不决策，也就是直接向着这一点去
-                                        ThetaList0=[t,TS,TS,Boat(TS).goal,1,Boat(OS).infer_label(TS)];
+                                        ThetaState=[t,TS,TS,Boat(TS).goal,1,Boat(OS).infer_label(TS)+1];
                                         %第一次推测，因此使用预设的PrTheta
                                         if CAL0(TS,ts_infer)==0
                                             Pr1=0.8;   %从WP1过的可能性大
@@ -239,27 +244,33 @@ for t=1:1:6    %tMax*2
                                             Pr1=0.2;
                                             Pr2=0.8;   %从WP2过的可能性大
                                         end
-                                        ThetaList0  =[ThetaList0;
+                                        ThetaState  =[ThetaState;
                                             t,TS,ts_infer,WP1,Pr1,Boat(OS).infer_label(TS);
                                             t,TS,ts_infer,WP2,Pr2,Boat(OS).infer_label(TS)];
                                         
-                                    else            
+                                    else
                                         % 已经有了预测的记录后，采用上一个时刻的PrTheta，只推测和预测
-                                        ThetaList0=[t,TS,TS,Boat(TS).goal,1,Boat(OS).infer_label(TS)];
-                                        % 从历史记录中提取出新的ThetaList0，并且只有在当前对TS有碰撞风险的ts_infer才计入ThetaList0
+                                        
+                                        % 从历史记录中提取出新的ThetaList0，并且只有在当前对TS有碰撞风险的ts_infer才计入当前的ThetaList0
                                         WP_num=1;
                                         for k_inf=1:1:size(Boat(OS).Theta_his,1)
+                                            % 首先取出TS自身的目标点的推测值
+                                            if Boat(OS).Theta_his(k_inf,2)==TS && ...
+                                                    Boat(OS).Theta_his(k_inf,3)==TS && ...
+                                                    Boat(OS).Theta_his(k_inf,7)==Boat(OS).infer_label(TS)
+                                                ThetaState  =[Boat(OS).Theta_his(k_inf,1:6),Boat(OS).infer_label(TS)+1];
+                                            end
                                             if Boat(OS).Theta_his(k_inf,2)==TS && ...
                                                     Boat(OS).Theta_his(k_inf,3)==ts_infer && ...
                                                     Boat(OS).Theta_his(k_inf,7)==Boat(OS).infer_label(TS)
-                                                ThetaList0  =[ThetaList0;
-                                                    Boat(OS).Theta_his(k_inf,:)];
+                                                ThetaState  =[ThetaState;
+                                                    Boat(OS).Theta_his(k_inf,1:6),Boat(OS).infer_label(TS)+1];
                                                 %提取出的历史ThetaList0再归入Pr1，Pr2
                                                 %因为在ThetaList0的排序中，只要有WP，那么WP1一定排在WP2之前，所以，第一查到的就是WP1
                                                 if WP_num==1
-                                                    Pr1=ThetaList0(k_inf,6);
+                                                    Pr1=ThetaState(k_inf,6);
                                                 else
-                                                    Pr2=ThetaList0(k_inf,6);
+                                                    Pr2=ThetaState(k_inf,6);
                                                 end
                                                 WP_num=WP_num+1;
                                             end
@@ -269,6 +280,7 @@ for t=1:1:6    %tMax*2
                                     % 计算避碰规则下的风险场，规则场RuleField
                                     Boat_theta = -Boat(ts_infer).COG_rad; %此处为弧度制
                                     Boat_Speed =  Boat(ts_infer).SOG;
+                                    Shiplength =  ShipSize(ts_infer,1);
                                     % 风险场
                                     SCR_temp = ShipDomain(pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
                                     cro_angle= abs(Boat(TS).COG_deg-Boat(ts_infer).COG_deg);
@@ -286,11 +298,24 @@ for t=1:1:6    %tMax*2
                             end
                             RiskMap=1./(ScenarioMap+1);
                             %完成对TS所有可能theta的收集（步骤0.1.1完成）
-                            Theta=ThetaList0(:,4:5); %按顺序提取当前所有的theta点
+                            Theta=ThetaState(:,4:5); %按顺序提取当前所有的theta点
                             %Theta坐标离散化
                             Theta_end(:,1)=round((Theta(:,2)+MapSize(2)*1852)/Res)+1;
                             Theta_end(:,2)=round((Theta(:,1)+MapSize(1)*1852)/Res)+1;
-                            disp(['  完成对TS所有',num2str(size(Theta,1)),'个可能theta的收集']);
+                            disp(['    完成对',num2str(TS),'船所有',num2str(size(Theta,1)),'个可能theta的收集']);
+                            % 画出来验证Theta对不对，即画出当前所有船的位置和theta的位置
+                            figure
+                            hold on
+                            for plotship=1:1:4
+                                %WTF:画出船舶的初始位置
+                                drawShip(Boat(plotship).HisPos(1,2:3),Boat(plotship).HisCOG(1,2),plotship,400);
+                                %WTF:画出船舶的结束位置
+                                drawShip(Boat(plotship).HisPos(end,2:3),Boat(plotship).HisCOG(end,2),plotship,400);
+                                %WTF:画出过往的航迹图
+                                plot(Boat(plotship).HisPos(:,1),Boat(plotship).HisPos(:,2),'r-');
+                            end
+                            plot(Theta(:,1),Theta(:,2),'r*')
+                            
                             
                             % 当前TS的引导场
                             Boat_x=Boat(TS).pos(1,1);
@@ -323,30 +348,40 @@ for t=1:1:6    %tMax*2
                             % 2.L0_paths是当前的所有theta得出的初步的路径
                             
                             %% 步骤1.公式(1)更新当前位置分布，给下个时刻用
-                            disp('  开始Equ1的计算');
+                            disp('    开始Equ1的计算');
                             t_eq11=toc;
                             [RR_points,PrX_eq1] = BayesEqu1(Boat_x,Boat_y,L0_paths,Boat_theta,Boat(TS).speed,Theta,Theta_end,FM_map,MapSize,Res);
-                            % 每次更新可达点和对应的值，但是Theta不一样
+                            % 注意：每次更新可达点和对应的值，但是Theta不一样
                             t_eq12=toc;
-                            disp(['  完成Equ1的计算，更新当前的位置分布,用时',num2str(t_eq12-t_eq11)]);
-                            DisPrX=[RR_points,PrX_eq1];
-                            Boat(OS).infer_points(TS)=RR_points;
-                            Boat(OS).PrX(TS)=PrX_eq1;
+                            disp(['    完成Equ1的计算，更新当前的位置分布,用时',num2str(t_eq12-t_eq11)]);
+                            
+                            % 画个图检查一下，是否都选了
+                            BoatX_map = round((Boat_x+MapSize(1)*1852)/Res)+1;
+                            BoatY_map = round((Boat_y+MapSize(2)*1852)/Res)+1;
+                            figure
+                            hold on
+                            plot(BoatX_map,BoatY_map,'ro')
+                            plot(RR_points(:,1),RR_points(:,2),'r*')
+                            axis([0 size(FM_map,1) 0 size(FM_map,2)])
+                            
+                            % Boat(OS).inferdata中存储的都是最近一步的数据，给下一次用
+                            Boat(OS).inferdata(TS).infer_points=RR_points;
+                            Boat(OS).inferdata(TS).PrX=PrX_eq1;
+                            
                             %% 步骤2.公式(2)更新当前的意图分布
-                            PrTheta0=ThetaList0(:,6)/sum(ThetaList0(:,6)); %PrTheta归一化，防止出现越来越小的情况
-                            PrTheta0=PrTheta0';        %第一次预测，第一行是初始的针对每一个theta的先验概率
                             if  Boat(OS).infer_label(TS)==1   %TS之前没有推测过，这是第一次
                                 % 这里需要加上if语句
-                                % 第一次预测，需要找到当前点在上一步的先验概率
+                                % 第一次预测，需要找到当前点在上一步的先验概率，由于前几步没有决策，所以总会找到前几步的
                                 % 此时的输入为TS上一步的状态
                                 Boat_x    = Boat(TS).HisPos(end-1,1);
                                 Boat_y    = Boat(TS).HisPos(end-1,2);
                                 Boat_theta=-Boat(TS).HisCOG(end-1,1);
                                 [PrRR_points,PrePrX_eq1] = BayesEqu1(Boat_x,Boat_y,Boat_theta,Boat(TS).speed,Theta,Theta_end,FM_map,MapSize,Res);
+                                
                             else
                                 % 之前计算过，直接采用上一步的结果
-                                PrRR_points=Boat(OS).infer_points(TS);
-                                PrePrX_eq1=Boat(OS).PrX(TS);
+                                PrRR_points=Boat(OS).inferdata(TS).infer_points;
+                                PrePrX_eq1=Boat(OS).inferdata(TS).PrX;
                             end
                             pos_current(1)=round((Boat(TS).pos(1)+MapSize(1)*1852)/Res)+1;
                             pos_current(2)=round((Boat(TS).pos(2)+MapSize(2)*1852)/Res)+1;
@@ -358,13 +393,19 @@ for t=1:1:6    %tMax*2
                             end
                             % 得到公式（2）右边第一个乘数Pr(Xi=xi)，是一行
                             PrXTheta=PrePrX_eq1(row_current,:);  % 当前点在上一个时刻的所有theta的PrX值
+                            % 得到公式（2）右边第二个乘数Pr(theta0)，即上一步的公式（2）的值
+                            
+                            PrTheta0=ThetaState(:,6)/sum(ThetaState(:,6)); %PrTheta归一化，防止出现越来越小的情况
+                            PrTheta0=PrTheta0';        %第一次预测，第一行是初始的针对每一个theta的先验概率
+                            
                             PrTheta = PrTheta0.*PrXTheta;
-                            PrTheta = PrTheta/sum(PrTheta(:));  % 公式（2）更新PrTheta
+                            % 公式（2）更新PrTheta
+                            PrTheta = PrTheta/sum(PrTheta(:));
+                            
                             % 更新当前时刻的ThetaList0，并存到Boat(OS).Theta_his中
-                            ThetaList0(:,6)=PrTheta';
-                            Boat(OS).Theta_his=[Boat(OS).Theta_his;ThetaList0];
-                            disp('  完成Equ2的计算，更新当前的Theta预测分布');
-                            DisPrTheta=[Theta,PrTheta']
+                            ThetaState(:,6)=PrTheta';
+                            Boat(OS).Theta_his=[Boat(OS).Theta_his;ThetaState];
+                            disp('    完成Equ2的计算，更新当前的Theta预测分布');
                             %% 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
                             % 步骤3.1. 依照更新后的PrTheta，利用MC方法生成theta点的阵列
                             N=100;
@@ -387,7 +428,7 @@ for t=1:1:6    %tMax*2
                                 Enny=randn(1)*He+En;
                                 Theta_MC(i_MC,2)=randn(1)*Enny+Theta(row_select,2);
                             end
-                            disp('  完成步骤3.根据意图概率生成每一个路径点的点数');
+                            disp('    完成Equ3的计算.根据意图概率生成每一个路径点的点数');
                             %% 步骤4.每一个点云的位置作为终点，终点坐标输入FM，生成n条路径
                             MC_end(:,1)=round((Theta_MC(:,2)+MapSize(2)*1852)/Res)+1;
                             MC_end(:,2)=round((Theta_MC(:,1)+MapSize(1)*1852)/Res)+1;
@@ -421,21 +462,26 @@ for t=1:1:6    %tMax*2
                             % 步骤4.3.把count_map再回归到OS的船头和船尾，判断CAL
                             % 即count_map加上OS的航行遮罩
                             % 位置换成OS的
-                            Boat_x    =Boat(OS).pos(1,1);
-                            Boat_y    =Boat(OS).pos(1,2);
+                            Boat_x    = Boat(OS).pos(1,1);
+                            Boat_y    = Boat(OS).pos(1,2);
                             Boat_theta=-Boat(OS).COG_rad; %此处为弧度制
-                            CAL_last  =Boat(OS).CAL_infer(TS);
+                            CAL_last  = Boat(OS).CAL_infer(TS);  %此处CAL是一个值，当前推测的OS对TS的CAL
                             alpha=45;
                             [CAL_current,chang,foreSum,aftSum] = CALjudge( Boat_x,Boat_y,Boat_theta,alpha,count_map,CAL_last,MapSize,Res);
-                            Boat(OS).CAL_infer(TS)=CAL_current;
-                            disp('  完成步骤4.生成n条MC路径');
+                            Boat(OS).CAL_infer(TS)=CAL_current;  %此处CAL是一个值，当前推测的OS对TS的CAL
+                            disp('    完成Equ4的计算.生成n条MC路径');
+                            disp(['    完成对',num2str(TS),'船的推测，对本船的CAL为']);
+                            % 推测完毕，infer_label+1
+                        Boat(OS).infer_label(TS)=Boat(OS).infer_label(TS)+1;
                         end
                     end
-                    Boat(OS).infer_label(TS)=Boat(OS).infer_label(TS)+1;
+                    
                 end
                 %% 进入本船决策，才用生成了目标路径点的FM算法
+                Boat(OS).CAL=Boat(OS).CAL_infer;
                 Boat0=Boat;
-                Boat= MainDecision(Boat0,OS,Boat_Num,ShipSize,MapSize,Res,t);
+                % 更新了的只是OS的内容
+                Boat = MainDecision(Boat0,OS,Boat_Num,ShipSize,MapSize,Res,t);
                 clear Boat0
             end
         end

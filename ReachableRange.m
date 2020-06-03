@@ -15,7 +15,10 @@ RR_Dis=RR_Dis+sqrt(BoatX.^2+BoatY.^2).*(BoatX<0 & BoatY>0 & BoatY>-tand(90-alpha
 
 RR_Dis(RR_Dis>20)=100;
 [row,col]=find(RR_Dis~=0);
-RR_points=[row,col];
+% 这里的横纵坐标是用找点的方式找到的，起始点为0
+% 但是在栅格化的地图中，起始点为1，这也是主程序中所有点栅格化后都加1的原因
+% 因此需要在这里也加上1，不然永远找不到合适的点
+RR_points=[row,col]+1;
 
 end
 
