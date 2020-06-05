@@ -21,7 +21,7 @@ t_res=ceil(Res/speed); %要保证每次至少能前进1格
 %% 步骤1.2. 找出t时刻所有的可达点Reachable points(Rb_points)
 % 用筛选AG_points的方法确定某一个时刻的可达点集合（r=V*(t-1),R=V*t）
 Rb_points=[];
-for RR_t=1:1:3   %每次猜测3步
+for RR_t=1:1:10   %每次猜测10步
     r_infer=0;
     R_infer=RR_t*speed*t_res;
     alpha=45;

@@ -107,7 +107,7 @@ for i=1:1:Boat_Num
     goal0=Goal_point(Boat(i).pos(1,1),Boat(i).pos(1,2),Boat(i).COG_deg,GoalRange*1852); %Boat(i)的初始目标位置，单位为米
     Boat(i).goal(1,1) =round(goal0(1,1)/Res)*Res;
     Boat(i).goal(1,2) =round(goal0(1,2)/Res)*Res;
-    
+    Boat(i).End=[];
     Boat(i).FM_lable=0; %初始时刻FM_lable为0，直到第一个时刻计算FM
     Boat(i).decision_delay=0; %初始时刻decision_delay为0，直到第一个时刻计算FM
     Boat(i).Current_row=0;
@@ -328,14 +328,21 @@ for t=1:1:6    %tMax*2
                             % TS的FMM初始位置
                             start_point(1,2) = round((Boat_x+MapSize(1)*1852)/Res)+1;
                             start_point(1,1) = round((Boat_y+MapSize(2)*1852)/Res)+1;
-                            step_length=[Res,Res];
-                            %如果start_point在FM_map的值<0.001，则无法计算路径，这里通过往前移动一小步的方法避免这一现象
-                            while  FM_map(start_point(1),start_point(2))<0.001
-                                start_temp = ang_point(Boat_x,Boat_y,Boat(OS).COG_deg,step_length); %往前移动一小步
-                                start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res)+1;
-                                start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res)+1;
-                                step_length=step_length+step_length;
+                            %                             step_length=[Res,Res];
+                            %                             %如果start_point在FM_map的值<0.001，则无法计算路径，这里通过往前移动一小步的方法避免这一现象
+                            %                             while  FM_map(start_point(1),start_point(2))<0.001
+                            %                                 start_temp = ang_point(Boat_x,Boat_y,Boat(OS).COG_deg,step_length); %往前移动一小步
+                            %                                 start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res)+1;
+                            %                                 start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res)+1;
+                            %                                 step_length=step_length+step_length;
+                            %                             end
+                            %如果start_point在FM_map的值<0.001，则FM的起始点陷入0点，无法计算路径，要加0.001
+                            if FM_map(start_point(1,1),start_point(1,2))<0.001
+                                FM_map=FM_map+0.01;
                             end
+                            % FM_map是FM算法的输入矩阵，最大值为1，因此大于1时需要强制置为1
+                            FM_map(FM_map>1)=1;
+                         
                             [InferMap, L0_paths] = FMM(FM_map,start_point',Theta_end');
                             % 注意：得出的InferMap和L0_paths的都是先验的
                             % 1.InferMap是FMM方法得出的以当前TS位置为起点的上一个时刻的CAL概率为先验概率的地图
@@ -347,7 +354,7 @@ for t=1:1:6    %tMax*2
                             [RR_points,PrX_eq1] = BayesEqu1(Boat_x,Boat_y,L0_paths,Boat_theta,Boat(TS).speed,Theta,Theta_end,FM_map,MapSize,Res);
                             % 注意：每次更新可达点和对应的值，但是Theta不一样
                             t_eq12=toc;
-                            disp(['    完成Equ1的计算，更新当前的位置分布,用时',num2str(t_eq12-t_eq11)]);
+                            disp(['    完成Equ1的计算，更新当前的位置分布，用时',num2str(t_eq12-t_eq11)]);
                             
                             % Boat(OS).inferdata中存储的都是最近一步的数据，给下一次用
                             Boat(OS).inferdata(TS).infer_points=RR_points;
@@ -373,8 +380,8 @@ for t=1:1:6    %tMax*2
                             row_index=ismember(PrRR_points,pos_current,'rows');
                             row_current=find(row_index==1);
                             if isempty(row_current)
-                                disp('错误！当前点不在上一步预测点中');
-                                break
+                                disp('错误！当前点不在上一步预测点中，程序暂停');
+                                pause
                             end
                             % 得到公式（2）右边第一个乘数Pr(Xi=xi)，是一行
                             PrXTheta=PrePrX_eq1(row_current,:);  % 当前点在上一个时刻的所有theta的PrX值
@@ -393,11 +400,12 @@ for t=1:1:6    %tMax*2
                             disp('    完成Equ2的计算，更新当前的Theta预测分布');
                             %% 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
                             % 步骤3.1. 依照更新后的PrTheta，利用MC方法生成theta点的阵列
-                            N=100;
-                            En=50;         %控制随机偏离，一次线性，熵
-                            He=100;       %控制随机偏离，二次线性，超熵
-                            Theta_MC=zeros(N,2);
-                            for i_MC=1:N    %对生成的每一个点
+                            t_eq31=toc;
+                            PointCloud_N=200;
+                            PointCloud_En=100;         %控制随机偏离，一次线性，熵
+                            PointCloud_He=100;       %控制随机偏离，二次线性，超熵
+                            Theta_MC=zeros(PointCloud_N,2);
+                            for i_MC=1:PointCloud_N    %对生成的每一个点
                                 % PP=[0.1 0.2 0.7];
                                 n_Theta=length(PrTheta);
                                 MCsub=zeros(1,n_Theta);
@@ -408,13 +416,15 @@ for t=1:1:6    %tMax*2
                                 Select=find(MCsub>=rand);
                                 row_select=Select(1);
                                 %得到依MC方法和依正态分布生成的Theta_MC阵列，此时Theta_MC坐标仍然为实际坐标
-                                Ennx=randn(1)*He+En;
+                                Ennx=randn(1)*PointCloud_He+PointCloud_En;
                                 Theta_MC(i_MC,1)=randn(1)*Ennx+Theta(row_select,1);
-                                Enny=randn(1)*He+En;
+                                Enny=randn(1)*PointCloud_He+PointCloud_En;
                                 Theta_MC(i_MC,2)=randn(1)*Enny+Theta(row_select,2);
                             end
-                            disp('    完成Equ3的计算.根据意图概率生成每一个路径点的点数');
+                            t_eq32=toc;
+                            disp(['    完成Equ3的计算，根据意图概率生成对应每一个Theta的目标点云，用时',num2str(t_eq32-t_eq31)]);
                             %% 步骤4.每一个点云的位置作为终点，终点坐标输入FM，生成n条路径
+                            t_eq41=toc;
                             MC_end(:,1)=round((Theta_MC(:,2)+MapSize(2)*1852)/Res)+1;
                             MC_end(:,2)=round((Theta_MC(:,1)+MapSize(1)*1852)/Res)+1;
                             [MCMap, MC_paths] = FMM(FM_map,start_point',MC_end');
@@ -454,15 +464,16 @@ for t=1:1:6    %tMax*2
                             alpha=45;
                             [CAL_current,chang,foreSum,aftSum] = CALjudge( Boat_x,Boat_y,Boat_theta,alpha,count_map,CAL_last,MapSize,Res);
                             Boat(OS).CAL_infer(TS)=CAL_current;  %此处CAL是一个值，当前推测的OS对TS的CAL
-                            disp('    完成Equ4的计算.生成n条MC路径');
-                            disp(['    完成对',num2str(TS),'船的推测，对本船的CAL为']);
+                            t_eq42=toc;
+                            disp(['    完成Equ4的计算，生成',num2str(PointCloud_N),'条MC路径，用时',num2str(t_eq42-t_eq41)]);
+                            disp(['    完成对',num2str(TS),'船的推测，对本船的CAL为',num2str(CAL_current),'（原CAL为）',num2str(CAL0(OS,TS))]);
                             
                             figure
                             infer_map=count_map;
                             % 显示马赛克图,检验当前的count_map
                             ss=pcolor(Y,X,infer_map);  %注意这里Y，X是相反的
                             set(ss, 'LineStyle','none');
-                            colorpan=ColorPanSet(6);
+                            colorpan=ColorPanSet(0);
                             colormap(colorpan);%定义色盘
                             hold on
                             for plotship=1:1:4
@@ -476,8 +487,16 @@ for t=1:1:6    %tMax*2
                             hold on
                             % 显示Theta位置
                             plot(Theta(:,1),Theta(:,2),'r*')
-
-
+                            axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+                            set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+                            set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+                            set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+                            set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+                            grid on;
+                            xlabel('\it n miles', 'Fontname', 'Times New Roman');
+                            ylabel('\it n miles', 'Fontname', 'Times New Roman');
+                            box on;
+                            
                             % 推测完毕，infer_label+1
                             Boat(OS).infer_label(TS)=Boat(OS).infer_label(TS)+1;
                         end

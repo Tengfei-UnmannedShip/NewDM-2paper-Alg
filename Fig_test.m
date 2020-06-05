@@ -1,10 +1,10 @@
 %用于最后绘制避碰路径
-Boat=Boat_end;
-MapSize=[8,8];
-GoalRange=MapSize-[0.75,0.75];
-Res=50;  %Resolution地图的分辨率
-[X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
-[m,n]=size(X);
+% Boat=Boat_end;
+% MapSize=[8,8];
+% GoalRange=MapSize-[0.75,0.75];
+% Res=50;  %Resolution地图的分辨率
+% [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
+% [m,n]=size(X);
 
 % for i=1:1:4
 %     switch i
@@ -63,32 +63,32 @@ Res=50;  %Resolution地图的分辨率
 
 % end
 
-figure
-hold on
-plot(Boat(1).HisPos(1,2),Boat(1).HisPos(1,3),'ro');
-plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
-plot(Boat(1).HisPos(:, 2), Boat(1).HisPos(:, 3), 'r-');
-plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-.');
-
-
-plot(Boat(2).HisPos(1,2),Boat(2).HisPos(1,3),'bo');
-plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
-plot(Boat(2).HisPos(:, 2), Boat(2).HisPos(:, 3), 'b-');
+% figure
+% hold on
+% plot(Boat(1).HisPos(1,2),Boat(1).HisPos(1,3),'ro');
+% plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
+% plot(Boat(1).HisPos(:, 2), Boat(1).HisPos(:, 3), 'r-');
+% plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-.');
+% 
+% 
+% plot(Boat(2).HisPos(1,2),Boat(2).HisPos(1,3),'bo');
+% plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
+% plot(Boat(2).HisPos(:, 2), Boat(2).HisPos(:, 3), 'b-');
 
 % plot(Boat(2).path(:, 1), Boat(2).path(:, 2), 'bo');
 % 
 
-plot(Boat(3).HisPos(1,2),Boat(3).HisPos(1,3),'go');
-plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
-plot(Boat(3).HisPos(:, 2), Boat(3).HisPos(:, 3), 'g-');
+% plot(Boat(3).HisPos(1,2),Boat(3).HisPos(1,3),'go');
+% plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
+% plot(Boat(3).HisPos(:, 2), Boat(3).HisPos(:, 3), 'g-');
 
 % plot(Boat(3).path(:, 1), Boat(3).path(:, 2), 'go');
 % 
 
-plot(Boat(4).HisPos(1,2),Boat(4).HisPos(1,3),'ko');
-plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-plot(Boat(4).HisPos(:, 2), Boat(4).HisPos(:, 3), 'k-');
-hold off
+% plot(Boat(4).HisPos(1,2),Boat(4).HisPos(1,3),'ko');
+% plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
+% plot(Boat(4).HisPos(:, 2), Boat(4).HisPos(:, 3), 'k-');
+% hold off
 % plot(Boat(4).path(:, 1), Boat(4).path(:, 2), 'ko');
 
 
@@ -103,10 +103,10 @@ hold off
 % box on;
 % 
 
-% figure;
-% kk1=mesh(X,Y,ScenarioMap);
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
+figure;
+kk1=mesh(X,Y,InferMap);
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
 % 
 % plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
 % ;

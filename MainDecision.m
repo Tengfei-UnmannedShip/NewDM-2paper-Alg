@@ -82,14 +82,21 @@ FM_map=min(AG_map,RiskMap);
 
 start_point(1,2) = round((Boat_x+MapSize(1)*1852)/Res)+1;
 start_point(1,1) = round((Boat_y+MapSize(2)*1852)/Res)+1;
-step_length=[18.52,18.52];
-%如果start_point在FM_map的值<0.001，则无法计算路径，这里通过往前移动一小步的方法避免这一现象
-while  FM_map(start_point(1,1),start_point(1,2))<0.001
-    start_temp = ang_point(Boat_x,Boat_y,Boat(OS).COG_deg,step_length);
-    start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res)+1;
-    start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res)+1;
-    step_length=step_length+[18.52,18.52];
+% step_length=[18.52,18.52];
+% %如果start_point在FM_map的值<0.001，则无法计算路径，这里通过往前移动一小步的方法避免这一现象
+% while  FM_map(start_point(1,1),start_point(1,2))<0.001
+%     start_temp = ang_point(Boat_x,Boat_y,Boat(OS).COG_deg,step_length);
+%     start_point(1,2) = round((start_temp(1)+MapSize(1)*1852)/Res)+1;
+%     start_point(1,1) = round((start_temp(2)+MapSize(2)*1852)/Res)+1;
+%     step_length=step_length+[18.52,18.52];
+% end
+
+%如果start_point在FM_map的值<0.001，则FM的起始点陷入0点，无法计算路径，要加0.001
+if FM_map(start_point(1,1),start_point(1,2))<0.001
+   FM_map=FM_map+0.01;
 end
+% FM_map是FM算法的输入矩阵，最大值为1，因此大于1时需要强制置为1
+ FM_map(FM_map>1)=1;
 
 t_count32=toc;
 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
