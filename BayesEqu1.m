@@ -1,4 +1,4 @@
-function [Rb_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,L0_paths,Boat_theta,speed,Theta,Theta_end,FM_map,MapSize,Res)
+function [Rb_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,course,speed,delt_t,L0_paths,Theta,Theta_end,FM_map,MapSize,Res)
 % 贝叶斯推断的公式1，根据当前的位置和theta计算下一步的位置分布
 % 输入：Boat_x,Boat_y,Boat_theta,speed：都是TS船的状态
 %      Theta：第0步得出的theta点的坐标和概率
@@ -18,15 +18,22 @@ for k_theta=1:1:size(Theta,1)     %针对每一个theta
     Theta_L0=[Theta_L0,L0_integral];
 end
 t_res=ceil(Res/speed); %要保证每次至少能前进1格
+if delt_t<t_res
+%     如果delt_t太小，也至少要走1步
+    delt_t=t_res;
+end
+RR_tmax=ceil(delt_t/t_res)+3;
+
 %% 步骤1.2. 找出t时刻所有的可达点Reachable points(Rb_points)
 % 用筛选AG_points的方法确定某一个时刻的可达点集合（r=V*(t-1),R=V*t）
+ t_eq101=toc;
 Rb_points=[];
-for RR_t=1:1:10   %每次猜测10步
+for RR_t=1:1:RR_tmax   %每次猜测RR_tmax步
     r_infer=0;
     R_infer=RR_t*speed*t_res;
-    alpha=45;
+    alpha=60;
     %RR_points和航行遮罩一样，得到的是地图上点的横纵坐标的n*2的矩阵
-    RRpoint0=ReachableRange(Boat_x,Boat_y,Boat_theta,alpha,R_infer,r_infer,MapSize,Res);
+    RRpoint0=ReachableRange(Boat_x,Boat_y,course,alpha,R_infer,r_infer,MapSize,Res);
     %顺着往下接这个n*2的矩阵，因此不存在尺寸不统一的问题，最后得到l*2的矩阵，l为所有3步以内可达点的个数
     Rb_points=[Rb_points;RRpoint0];
 end
@@ -35,7 +42,8 @@ end
 Rb_points=unique(Rb_points,'rows','stable');
 % unique(A,’stable’)去重复后不排序。默认的排序是unique(A,’sorted’)，’sorted’一般省略掉了。
 Rb_points=fliplr(Rb_points);
-
+t_eq102=toc;
+disp(['     找到所有可达点，共用时',num2str(t_eq102-t_eq101)]);
 %% 步骤1.3. 绘制L1计算线积分
 % 对每一个RR_point找到对应的TS-Reachable-theta的路径L1
 RP_all_L1=[];

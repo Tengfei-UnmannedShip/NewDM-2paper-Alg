@@ -52,7 +52,7 @@ for i=1:1:Boat_Num
         deltaPos=Boat(i).pos-LastPos;
         Boat(i).COG_deg = NavAng(deltaPos);
         Boat(i).COG_rad = Boat(i).COG_deg/180*pi;
-        Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+        Boat(i).HisCOG=[Boat(i).HisCOG;t,Boat(i).COG_rad,Boat(i).COG_deg];
         Boat(i).Current_row=row;
         
     elseif Boat(i).reach==0  %已经到达终点
@@ -66,7 +66,7 @@ for i=1:1:Boat_Num
         
         Boat(i).pos = [Boat(i).pos(1)+Boat(i).speed*sind(Boat(i).COG_deg),Boat(i).pos(2)+Boat(i).speed*cosd(Boat(i).COG_deg)];
         Boat(i).HisPos=[Boat(i).HisPos;t,Boat(i).pos];
-        Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+        Boat(i).HisCOG=[Boat(i).HisCOG;t,Boat(i).COG_rad,Boat(i).COG_deg];
     end
     
     if norm(Boat(i).pos-Boat(i).goal)<=2*Res %本船当前距离在同一个格子里，即认为本船到达目标点
