@@ -15,7 +15,8 @@
 %              解决：尝试增加下一步起点的发散程度，每一个起点对应的路径点则是按照当前的航速航向前进时新的路径点theta
 %          问题2：FM的算法还有问题，又是从船的头上走的
 %              解决：应该还是giudance field的问题，继续修改，注意
-% (3.0版本)Eq1的计算改成每一次计算上一时刻的，给当前时刻的Eq2计算用
+% (3.0版本)1.Eq1的计算改成每一次计算上一时刻的，给当前时刻的Eq2计算用
+%                2.Eq1遍历当前可达点时，第一个点是当前点。这样可以防止出现两次推测距离过近，没有出一个格子的情况
 %
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -351,25 +352,9 @@ for t=1:1:6    %tMax*2
                             Boat_x0    = Boat(TS).HisPos(t_last,1);
                             Boat_y0    = Boat(TS).HisPos(t_last,2);
                             Boat_theta=-Boat(TS).HisCOG(t_last,1);
-                            delt_t=t-t_last;
-                            
-                            pos0=[Boat_x0,Boat_y0];
-                            pos_now=Boat(TS).pos;
-                            deta_pos=pos_now-pos0;
-                            while norm(deta_pos)<=Res
-                                t_last=t_last-1;
-                                
-                                Boat_x0    = Boat(TS).HisPos(t_last,1);
-                                Boat_y0    = Boat(TS).HisPos(t_last,2);
-                                Boat_theta=-Boat(TS).HisCOG(t_last,1);
-                                delt_t=t-t_last;
-                                
-                                pos0=[Boat_x0,Boat_y0];
-                                pos_now=Boat(TS).pos;
-                                deta_pos=pos_now-pos0;
-                            end
+                            delta_t=t-t_last;
                             speed=Boat(TS).speed;
-                            [PrRR_points,PrePrX_eq1] = BayesEqu1(Boat_x0,Boat_y0,Boat_theta,speed,delt_t,L0_paths,Theta,Theta_end,FM_map,MapSize,Res);
+                            [PrRR_points,PrePrX_eq1] = BayesEqu1(Boat_x0,Boat_y0,Boat_theta,speed,delta_t,L0_paths,Theta,Theta_end,FM_map,MapSize,Res);
                             % Boat(OS).inferdata中存储的都是最近一步的数据，给下一次用
                             Boat(OS).InferData(TS).infer_points=PrRR_points;
                             Boat(OS).InferData(TS).PrX=PrePrX_eq1;
@@ -382,7 +367,6 @@ for t=1:1:6    %tMax*2
                             row_current=find(row_index==1);
                             if isempty(row_current)
                                 disp('错误！当前点不在上一步预测点中，程序暂停');
-                                
                             end
                             % 得到公式（2）右边第一个乘数Pr(Xi=xi)，是一行
                             PrXTheta=PrePrX_eq1(row_current,:);  % 当前点在上一个时刻的所有theta的PrX值
@@ -471,9 +455,9 @@ for t=1:1:6    %tMax*2
                     end
                     figure
                     infer_map=zeros(m,n);
-                    for ts_infer=1:1:Boat_Num
-                        if ts_infer~=OS
-                            infer_map=infer_map+Boat(OS).InferData(ts_infer).infermap(t);
+                    for ts_map=1:1:Boat_Num
+                        if ts_map~=OS &&  ismember(t,Boat(OS).InferData(ts_map).infer_label)
+                            infer_map=infer_map+Boat(OS).InferData(ts_map).infermap(t).map;
                         end
                     end
                     % 显示马赛克图,检验当前的count_map
@@ -513,31 +497,31 @@ for t=1:1:6    %tMax*2
         end
     end
     
-    if t==1000
-        Boat1000=Boat;
-        t1000=t_count12;
-        save('data0306-0100','Boat1000','t1000');
-        disp('1000s数据已保存');
-        clear Boat1000
-    elseif t==1500
-        Boat1500=Boat;
-        t1500=t_count12;
-        save('data0306-0100','Boat1500','t1500','-append');
-        disp('1500s数据已保存');
-        clear Boat1500
-    elseif t==2500
-        Boat2500=Boat;
-        t2500=t_count12;
-        save('data0306-0100','Boat2500','t2500','-append');
-        disp('2500s数据已保存');
-        clear Boat2500
-    elseif t==3500
-        Boat3500=Boat;
-        t3500=t_count12;
-        save('data0306-0100','Boat3500','t3500','-append');
-        disp('2000s数据已保存');
-        clear Boat3500
-    end
+%     if t==1000
+%         Boat1000=Boat;
+%         t1000=t_count12;
+%         save('data0306-0100','Boat1000','t1000');
+%         disp('1000s数据已保存');
+%         clear Boat1000
+%     elseif t==1500
+%         Boat1500=Boat;
+%         t1500=t_count12;
+%         save('data0306-0100','Boat1500','t1500','-append');
+%         disp('1500s数据已保存');
+%         clear Boat1500
+%     elseif t==2500
+%         Boat2500=Boat;
+%         t2500=t_count12;
+%         save('data0306-0100','Boat2500','t2500','-append');
+%         disp('2500s数据已保存');
+%         clear Boat2500
+%     elseif t==3500
+%         Boat3500=Boat;
+%         t3500=t_count12;
+%         save('data0306-0100','Boat3500','t3500','-append');
+%         disp('2000s数据已保存');
+%         clear Boat3500
+%     end
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
     disp('===========================================================');
@@ -545,8 +529,8 @@ end
 t3=toc;
 disp(['本次运行总时间: ',num2str(t3)]);
 
-Boat_end=Boat;
-t_end=t_count12;
-save('data0306-0100','Boat_end','t_end','-append');
-disp('最终数据已保存');
-clear Boat_end
+% Boat_end=Boat;
+% t_end=t_count12;
+% save('data0606-0100','Boat_end','t_end','-append');
+% disp('最终数据已保存');
+% clear Boat_end

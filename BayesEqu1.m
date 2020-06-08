@@ -1,4 +1,4 @@
-function [Rb_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,course,speed,delt_t,L0_paths,Theta,Theta_end,FM_map,MapSize,Res)
+function [Rb_points,PrX_eq1] = BayesEqu1( Boat_x,Boat_y,course,speed,delta_t,L0_paths,Theta,Theta_end,FM_map,MapSize,Res)
 % 贝叶斯推断的公式1，根据当前的位置和theta计算下一步的位置分布
 % 输入：Boat_x,Boat_y,Boat_theta,speed：都是TS船的状态
 %      Theta：第0步得出的theta点的坐标和概率
@@ -17,28 +17,30 @@ for k_theta=1:1:size(Theta,1)     %针对每一个theta
     % 得到每一个theta对应的当前的L0风险积分值
     Theta_L0=[Theta_L0,L0_integral];
 end
-t_res=ceil(Res/speed); %要保证每次至少能前进1格
-if delt_t<t_res
-%     如果delt_t太小，也至少要走1步
-    delt_t=t_res;
+t_res=Res/speed; %要保证每次至少能前进1格
+if delta_t>t_res
+    %如果上次推测的时间到当前时刻，足以前进至少1格，则使用delta_t
+    t_step=delta_t+3;  %再往下计算5s，至少算到下一个决策周期
+else
+    %如果上次推测的时间到当前时刻太近，不足以前进1格，则使用t_res
+    t_step=t_res+3;  %再往下计算5s，至少算到下一个决策周期
 end
-RR_tmax=ceil(delt_t/t_res)+3;
-
 %% 步骤1.2. 找出t时刻所有的可达点Reachable points(Rb_points)
 % 用筛选AG_points的方法确定某一个时刻的可达点集合（r=V*(t-1),R=V*t）
- t_eq101=toc;
-Rb_points=[];
-for RR_t=1:1:RR_tmax   %每次猜测RR_tmax步
-    r_infer=0;
-    R_infer=RR_t*speed*t_res;
-    alpha=60;
-    %RR_points和航行遮罩一样，得到的是地图上点的横纵坐标的n*2的矩阵
-    RRpoint0=ReachableRange(Boat_x,Boat_y,course,alpha,R_infer,r_infer,MapSize,Res);
-    %顺着往下接这个n*2的矩阵，因此不存在尺寸不统一的问题，最后得到l*2的矩阵，l为所有3步以内可达点的个数
-    Rb_points=[Rb_points;RRpoint0];
-end
-% 删去相同的点（即相同的行）
-% 使用unique函数
+t_eq101=toc;
+% 第一个可达点是当前点，在两次推测过近的情况下，可能出现两次移动都在一个格子中的情况
+Rb_points(1,2)=ceil((Boat_x+MapSize(1)*1852)/Res);
+Rb_points(1,1)=ceil((Boat_y+MapSize(2)*1852)/Res);
+
+r_infer=0;
+R_infer=speed*t_step;
+alpha=120;
+%RR_points和航行遮罩一样，得到的是地图上点的横纵坐标的n*2的矩阵
+RRpoint0=ReachableRange(Boat_x,Boat_y,course,alpha,R_infer,r_infer,MapSize,Res);
+%顺着往下接这个n*2的矩阵，因此不存在尺寸不统一的问题，最后得到l*2的矩阵，l为所有3步以内可达点的个数
+Rb_points=[Rb_points;RRpoint0];
+
+% 使用unique函数，删去相同的点（即相同的行）
 Rb_points=unique(Rb_points,'rows','stable');
 % unique(A,’stable’)去重复后不排序。默认的排序是unique(A,’sorted’)，’sorted’一般省略掉了。
 Rb_points=fliplr(Rb_points);
