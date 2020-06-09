@@ -1,23 +1,6 @@
-%% V1.0 一艘船的贝叶斯推测程序，成功之后用作函数
-%     总体思路：公式(1)更新当前位置分布，公式(2)更新当前的意图分布，根据意图概率生成围绕每一个路径点的点云
-%             每一个点云的位置作为终点，终点坐标输入FM，生成n条路径，每一个路径回归到点，
-%             通过计算在OS船头船尾的点的多少来确定CAL
-%     步骤1.公式(1)更新当前位置分布
-%     步骤2.公式(2)更新当前的意图分布
-%     步骤3.根据意图概率，用MC方法生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
-%     步骤4.每一个点云的位置作为终点，终点坐标输入FM，生成n条路径
-%     步骤5.每一个路径回归到点，每一个路径点计数
-%     步骤6.通过计算在OS船头船尾的点的多少来确定CAL
-% (1.0版本)复制过来原程序，调试
-% (2.0版本)添加马赛克图绘制程序
-%      当前存在的主要问题：
-%          问题1：每条路线太统一，没有出现发散的情况，没有表现出不确定性
-%              解决：尝试增加下一步起点的发散程度，每一个起点对应的路径点则是按照当前的航速航向前进时新的路径点theta
-%          问题2：FM的算法还有问题，又是从船的头上走的
-%              解决：应该还是giudance field的问题，继续修改，注意
-% (3.0版本)1.Eq1的计算改成每一次计算上一时刻的，给当前时刻的Eq2计算用
-%                2.Eq1遍历当前可达点时，第一个点是当前点。这样可以防止出现两次推测距离过近，没有出一个格子的情况
-%
+%% V2.0 生成蒙特卡洛路径算法用的PRM方法
+%     总体思路：总体思路不变，只在最后生成路径时使用机器人工具箱中的PRM算法
+% (1.1版本)复制过来原程序，加入PRM，调试
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -217,6 +200,7 @@ for t=1:1:6    %tMax*2
                             % 步骤0.1. 找到TS视角下所有可能的路径点
                             % 步骤0.2. 绘制当前TS眼中的风险场、规则场和引导场
                             ScenarioMap=zeros(m,n);
+                            RRT_map=zeros(m,n);
                             %此时os就是成了ts了
                             v_os      = Boat(TS).speed;
                             course_os = Boat(TS).COG_deg;
@@ -287,7 +271,7 @@ for t=1:1:6    %tMax*2
                                     % 风险场
                                     SCR_temp = ShipDomain(pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
                                     cro_angle= abs(Boat(TS).COG_deg-Boat(ts_infer).COG_deg);
-                                    
+                                    RRT_map=RRT_map+SCR_temp;
                                     Rule_eta=2;
                                     Rule_alfa=0.1;
                                     % 规则场
@@ -361,8 +345,8 @@ for t=1:1:6    %tMax*2
                             t_eq12=toc;
                             disp(['    完成Equ1的计算，更新当前的位置分布，用时',num2str(t_eq12-t_eq11)]);
                             %% 步骤2.公式(2)更新当前的意图分布
-                            pos_current(1)=ceil((Boat(TS).pos(1)+MapSize(1)*1852)/Res);
-                            pos_current(2)=ceil((Boat(TS).pos(2)+MapSize(2)*1852)/Res);
+                            pos_current(1)= round((Boat(TS).pos(1)+MapSize(1)*1852)/Res)+1;
+                            pos_current(2)= round((Boat(TS).pos(2)+MapSize(2)*1852)/Res)+1;
                             row_index=ismember(PrRR_points,pos_current,'rows');
                             row_current=find(row_index==1);
                             if isempty(row_current)
@@ -382,7 +366,7 @@ for t=1:1:6    %tMax*2
                             Boat(OS).Theta_his=[Boat(OS).Theta_his;ThetaState];
                             disp('    完成Equ2的计算，更新当前的Theta预测分布');
                             %% 步骤3.根据意图概率生成每一个路径点的点数，根据点数生成围绕每一个路径点的点云
-                            % 步骤3.1. 依照更新后的PrTheta，利用MC方法生成theta点的阵列
+                            % 步骤3.1. 依照更新后的PrTheta，利用MC方法生成theta点的点云
                             t_eq31=toc;
                             PointCloud_N=200;
                             PointCloud_En=100;         %控制随机偏离，一次线性，熵
@@ -406,33 +390,25 @@ for t=1:1:6    %tMax*2
                             end
                             t_eq32=toc;
                             disp(['    完成Equ3的计算，根据意图概率生成对应每一个Theta的目标点云，用时',num2str(t_eq32-t_eq31)]);
-                            %% 步骤4.每一个点云的位置作为终点，终点坐标输入FM，生成n条路径
+                            %% 步骤4.每一个点云的位置作为终点，计算PRM
                             t_eq41=toc;
-                            MC_end(:,1)=round((Theta_MC(:,2)+MapSize(2)*1852)/Res)+1;
-                            MC_end(:,2)=round((Theta_MC(:,1)+MapSize(1)*1852)/Res)+1;
-                            [MCMap, MC_paths] = FMM(FM_map,start_point',MC_end');
-                            % 步骤4.2. 每条路径归到栅格点上，绘制马赛克图
+                            % 步骤4.0.绘制当前的地图，船舶周围为障碍物，其他都是可走的区域
                             count_map=zeros(m,n);
-                            for n_count=1:1:size(MC_end,1)    %针对MC之后的每一个仿真路径
+                            RRTstart(1)=round(abs(( Boat(TS).pos(1)+MapSize(1)*1852)/Res))+1;
+                            RRTstart(2)=round(abs((-Boat(TS).pos(2)+MapSize(2)*1852)/Res))+1;
+                            for n_count=1:1:size(Theta_MC,1)    %针对MC之后的每一个仿真路径
+                                % 步骤4.1.对每一个Theta_MC，当前位置为起点，Theta_MC为终点，计算PRM
+                                RRTend(1)=round(abs(( Theta_MC(n_count,1)+MapSize(1)*1852)/Res))+1;
+                                RRTend(2)=round(abs((-Theta_MC(n_count,2)+MapSize(2)*1852)/Res))+1;
+                                L0 = RRTPlanner(RRT_map,RRTstart,RRTend,speed) ;
                                 count_map0=zeros(m,n);
-                                L0=MC_paths{n_count};
-                                L0=rot90(L0',2);
-                                x0=L0(1:50,1); %规划的路径平滑处理
-                                y0=L0(1:50,2);
-                                %平滑两次
-                                y_new=smooth(y0);
-                                x_new=smooth(x0);
-                                x_new1=smooth(x_new);
-                                y_new1=smooth(y_new);
-                                
-                                L0(1:50,1)=x_new1;
-                                L0(1:50,2)=y_new1; %得出最终的平滑后的L0
                                 % 计算每一个L0的风险积分InL0
                                 % 1)L0坐标点向下取到所在的栅格坐标，删去重复的，防止一个格子算两遍
                                 L0_point0=floor(L0);    %L0坐标点向下取到所在的栅格坐标
                                 L0_point=unique(L0_point0,'rows','stable');  %删去重复行，保留原顺序
                                 row_count=L0_point(:,1);
                                 col_count=L0_point(:,2);
+                                % 步骤4.2. 每条路径归到栅格点上，绘制马赛克图
                                 count_map0(sub2ind(size(count_map0),row_count,col_count))=1;
                                 % 最终得到的count_map就是MC之后每一个格子里的值，都是整数
                                 count_map=count_map+count_map0;
