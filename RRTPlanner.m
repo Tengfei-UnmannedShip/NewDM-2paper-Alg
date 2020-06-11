@@ -1,4 +1,4 @@
-function  RrtPath = RRTPlanner(RRT_map,startLocation,endLocation,speed)  
+function  [RrtPath,breaklabel] = RRTPlanner(RRT_map,startLocation,endLocation,speed,PrFocus) 
 % 由RrtPlanner_test调试后改成了函数
 % 输入%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % map0:直接输入风险图即可，程序中对风险图二值化
@@ -15,6 +15,7 @@ function  RrtPath = RRTPlanner(RRT_map,startLocation,endLocation,speed)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 数据预处理，风险图的二值化
 threshold=166;
+breaklabel=0;
 map0=RRT_map;
 map0(map0<threshold)=0;
 map0(map0>=threshold)=1;
@@ -44,7 +45,7 @@ parent = 1;                 %所有节点前驱，初始节点前驱为自己
 
 while norm(RrtPath(end,:)-p(2,:))>step           %搜索到距离结束节点一定距离停止
     
-    if rand()<0.3                           %按30%概率随机搜索，70%概率朝着结束位置搜索
+    if rand()<1-PrFocus                        %按1-PrFocus概率随机搜索，PrFocus概率朝着结束位置搜索
         nextp = [rand()*h rand()*w];
     else
         nextp = p(2,:);
@@ -71,6 +72,7 @@ while norm(RrtPath(end,:)-p(2,:))>step           %搜索到距离结束节点一定距离停止
     RrtPath=[RrtPath;newp];                                       %将新节点加入节点树
     parent = [parent;ind];                              %设置新节点的前驱
     if size(RrtPath,1)>1000
+        breaklabel=1;
         break       %总是出现RrtPath太长的情况，因此，设置大于1000时，停止计算，本次仿真结束
     end
 end

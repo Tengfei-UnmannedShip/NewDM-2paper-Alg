@@ -369,8 +369,6 @@ for t=1:1:6    %tMax*2
                             % 步骤3.1. 依照更新后的PrTheta，利用MC方法生成theta点的点云
                             t_eq31=toc;
                             PointCloud_N=200;
-                            PointCloud_En=100;         %控制随机偏离，一次线性，熵
-                            PointCloud_He=100;         %控制随机偏离，二次线性，超熵
                             Theta_MC=zeros(PointCloud_N,2);
                             for i_MC=1:PointCloud_N    %对生成的每一个点
                                 % PP=[0.1 0.2 0.7];
@@ -383,10 +381,8 @@ for t=1:1:6    %tMax*2
                                 Select=find(MCsub>=rand);
                                 row_select=Select(1);
                                 %得到依MC方法和依正态分布生成的Theta_MC阵列，此时Theta_MC坐标仍然为实际坐标
-                                Ennx=randn(1)*PointCloud_He+PointCloud_En;
-                                Theta_MC(i_MC,1)=randn(1)*Ennx+Theta(row_select,1);
-                                Enny=randn(1)*PointCloud_He+PointCloud_En;
-                                Theta_MC(i_MC,2)=randn(1)*Enny+Theta(row_select,2);
+                                Theta_MC(i_MC,1)=Theta(row_select,1);
+                                Theta_MC(i_MC,2)=Theta(row_select,2);
                             end
                             t_eq32=toc;
                             disp(['    完成Equ3的计算，根据意图概率生成对应每一个Theta的目标点云，用时',num2str(t_eq32-t_eq31)]);
@@ -396,11 +392,14 @@ for t=1:1:6    %tMax*2
                             count_map=zeros(m,n);
                             RRTstart(1)=round(abs(( Boat(TS).pos(1)+MapSize(1)*1852)/Res))+1;
                             RRTstart(2)=round(abs((-Boat(TS).pos(2)+MapSize(2)*1852)/Res))+1;
+                            RRTbraeklable=0;
                             for n_count=1:1:size(Theta_MC,1)    %针对MC之后的每一个仿真路径
                                 % 步骤4.1.对每一个Theta_MC，当前位置为起点，Theta_MC为终点，计算PRM
                                 RRTend(1)=round(abs(( Theta_MC(n_count,1)+MapSize(1)*1852)/Res))+1;
                                 RRTend(2)=round(abs((-Theta_MC(n_count,2)+MapSize(2)*1852)/Res))+1;
-                                L0 = RRTPlanner(RRT_map,RRTstart,RRTend,speed) ;
+                                PrFocus=0.2+0.8*rand(1);
+                                [L0,braeklable] = RRTPlanner(RRT_map,RRTstart,RRTend,speed,PrFocus) ;
+                                RRTbraeklable=RRTbraeklable+braeklable;
                                 count_map0=zeros(m,n);
                                 % 计算每一个L0的风险积分InL0
                                 % 1)L0坐标点向下取到所在的栅格坐标，删去重复的，防止一个格子算两遍
