@@ -10,8 +10,8 @@ function WP= WayPoint(pos_os,course_ts,pos_ts,TSlength,changeLabel)
 dis=norm(pos_os-pos_ts);
 
 if  changeLabel==0
-    a1=1;  %按船头2倍船长，船尾1.5倍船长设计
-    a2=10;
+    a1=2;  %按船头2倍船长，船尾1.5倍船长设计
+    a2=5;
     
 elseif changeLabel==1
     if dis<200

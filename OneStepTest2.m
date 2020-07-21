@@ -171,27 +171,27 @@ GuidanceMap=1./(AFMfield+1);
 safetymap=AFMfield+ScenarioMap;
 SMap=1./(safetymap+1);
 FM_map=10*min(RiskMap, GuidanceMap); % a, b是矩阵
-%                 %% 绘图测试
-%                 figure;
-%                 kk1=mesh(X,Y,ScenarioMap);
-%                 colorpan=ColorPanSet(6);
-%                 colormap(colorpan);%定义色盘
-%                 hold on
-%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-%                 hold on;
-%                 ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-%                 axis equal
-%                 axis off
-%
-%                 figure
-%                 kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
-%                 colorpan=ColorPanSet(6);
-%                 colormap(colorpan);%定义色盘
-%                 % set(kk2, 'LineStyle','none');
-%                 hold on
-%                 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-%                 hold on
-%                 %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
+%% 绘图测试
+figure;
+kk1=mesh(X,Y,ScenarioMap);
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+hold on
+plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+hold on;
+ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
+axis equal
+axis off
+
+figure
+kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+% set(kk2, 'LineStyle','none');
+hold on
+plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
+hold on
+%                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
 
 
 t_count32=toc;
@@ -318,17 +318,17 @@ else
 end
 
 
-%% 绘图
+% 绘图
 % 绘图测试
-% figure
-% mesh(X,Y,FM_map);
-% title('当前输入地图')
-% figure
-% mesh(X,Y,RiskMap);
-% title('当前船舶安全图')
-% figure
-% mesh(X,Y,GuidanceMap);
-% title('当前导引图')
+figure
+mesh(X,Y,FM_map);
+title('当前输入地图')
+figure
+mesh(X,Y,RiskMap);
+title('当前船舶安全图')
+figure
+mesh(X,Y,GuidanceMap);
+title('当前导引图')
 figure
 mesh(X,Y,FinalMap)
 
@@ -375,42 +375,42 @@ box on;
 
 
 
-% 
-% figure
-% kk2=contourf(X,Y,safetymap);  %带填充颜色的等高线图
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% hold on
-% 
-% plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
-% hold on
-% plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
-% hold on
-% plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
-% hold on
-% 
-% plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
-% hold on
-% plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
-% hold on
-% 
-% plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
-% hold on
-% plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
-% hold on
-% 
-% plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
-% hold on
-% plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-% hold on
-% plot(end_point(1),end_point(2),'r*');
-% 
-% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
-% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-% grid on;
-% xlabel('\it n miles', 'Fontname', 'Times New Roman');
-% ylabel('\it n miles', 'Fontname', 'Times New Roman');
-% box on;
+
+figure
+kk2=contourf(X,Y,safetymap);  %带填充颜色的等高线图
+colorpan=ColorPanSet(6);
+colormap(colorpan);%定义色盘
+hold on
+
+plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
+hold on
+plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
+hold on
+plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
+hold on
+
+plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
+hold on
+plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
+hold on
+
+plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
+hold on
+plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
+hold on
+
+plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
+hold on
+plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
+hold on
+plot(end_point(1),end_point(2),'r*');
+
+axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+grid on;
+xlabel('\it n miles', 'Fontname', 'Times New Roman');
+ylabel('\it n miles', 'Fontname', 'Times New Roman');
+box on;
