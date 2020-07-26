@@ -124,7 +124,12 @@ for i=1:1:Boat_Num
     % 在下一次更新状态是，还是按照上一次的决策来。
     Boat(i).decision_label=0;
     Boat(i).decision_count=0;   %决策计数
-     Boat(i).decision_his=[];   
+    Boat(i).Dechis.data=[];
+    Boat(i).Dechis.startpos=[];
+    Boat(i).Dechis.endpos=[];
+    Boat(i).Dechis.map=[];
+    Boat(i).Dechis.Scenariomap=[];
+    Boat(i).Dechis.path=[];
     Boat(i).reachWP=0;
     Boat(i).Current_row=0;
     for ii=1:1:Boat_Num
@@ -239,8 +244,80 @@ for t=1:1:4000   %tMax*2
     t_count11=t_count12;    %时间计数
     Boat0=Boat;
     % 每时刻状态更新，在程序中运行的都只是必要的信息
-    Boat=StateUpdate(Boat0,Boat_Num,t,Res);
-    clear Boat0
+%     Boat=StateUpdate(Boat0,Boat_Num,t,Res);
+%     clear Boat0
+for i=1:1:Boat_Num
+    if Boat(i).FM_lable~=0 && Boat(i).reach==1 %即已经开始决策但没有到终点
+        %由于FMM方法的特点，有些点之间步长特别长，因此需要分成两种情况
+        row=Boat(i).Current_row;
+        deltaPos=Boat(i).path(row+1,:)-Boat(i).pos;
+        LastPos=Boat(i).pos;
+        if  norm(deltaPos)>Boat(i).speed
+            %步长大于单位时间船舶走的路程的时候，需要沿着规划之后的两点之间的线段找点
+            disp([num2str(t),'时刻',num2str(i),'号船步长大于单位时间路程']);
+            x_temp=Boat(i).pos(1);
+            y_temp=Boat(i).pos(2);
+            pos_temp0=[x_temp,y_temp];
+            step_temp=0;
+            while step_temp<Boat(i).speed
+                x_l=Boat(i).path(row:row+1,1);
+                y_l=Boat(i).path(row:row+1,2);
+                %采取插值函数找点
+                if x_l(1)==x_l(2)  %一条竖直线
+                    x_temp=x_temp;
+                    y_temp=y_temp+1;   %每次走1米
+                elseif y_l(1)==y_l(2)  %一条水平线
+                    x_temp=x_temp+1;     %每次走1米
+                    y_temp=y_temp;
+                else   %一条常规的斜线
+                    x_temp=x_temp+1;    %每次x走1米
+                    y_temp=interp1(x_l,y_l,x_temp,'spline');
+                end
+                pos_temp=[x_temp,y_temp];
+                delta_pos0=pos_temp-pos_temp0;
+                delta_pos=norm(delta_pos0);
+                step_temp=step_temp+delta_pos;
+                pos_temp0=pos_temp;
+            end
+            Boat(i).pos=pos_temp;
+        else    %步长小于单位时间路程的时候，采用沿路径巡点的方法
+            disp([num2str(t),'时刻',num2str(i),'号船步长小于单位时间路程']);
+            step_temp=deltaPos;
+            while step_temp<Boat(i).speed
+                delta_pos0=Boat(i).path(row+1,:)-Boat(i).path(row,:);
+                delta_pos=norm(delta_pos0);
+                step_temp=step_temp+delta_pos;
+                row=row+1;
+            end
+            Boat(i).pos=Boat(i).path(row,:);
+        end
+        Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
+        deltaPos=Boat(i).pos-LastPos;
+        Boat(i).COG_deg = NavAng(deltaPos);
+        Boat(i).COG_rad = Boat(i).COG_deg/180*pi;
+        Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+        Boat(i).Current_row=row;
+        
+    elseif Boat(i).reach==0  %已经到达终点
+        Boat(i).pos = Boat(i).pos;
+        Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
+        Boat(i).COG_deg = Boat(i).COG_deg;
+        Boat(i).COG_rad = Boat(i).COG_rad;
+        Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+        
+    elseif Boat(i).FM_lable==0  %没有决策过的状态
+        
+        Boat(i).pos = [Boat(i).pos(1)+Boat(i).speed*sind(Boat(i).COG_deg),Boat(i).pos(2)+Boat(i).speed*cosd(Boat(i).COG_deg)];
+        Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
+        Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
+    end
+    
+    if norm(Boat(i).pos-Boat(i).goal)<=2*Res %本船当前距离在同一个格子里，即认为本船到达目标点
+        disp([num2str(t),'时刻',num2str(i),'号船到达目标点']);
+        Boat(i).reach=0;
+    end
+    
+end
     reach_label=0; %每个时刻归零
     reach_label=reach_label+Boat(1).reach+Boat(2).reach+Boat(3).reach+Boat(4).reach;
     if  Boat(1).reach==0
@@ -276,7 +353,6 @@ for t=1:1:4000   %tMax*2
                 Boat(OS).infercount=Boat(OS).infercount+1;
                 disp([' ',num2str(OS),'船第',num2str(Boat(OS).infercount),'次推测']);
                 for  TS=1:1:Boat_Num
-                    
                     if TS~=OS
                         disp(['  进入',num2str(TS),'船视角']);
                         TSinferlabel=[t,Boat(OS).InferData(TS).infer_label(end,2)+1];
@@ -560,11 +636,19 @@ for t=1:1:4000   %tMax*2
             Risk_temp=[];
             k=1;
             k_ship=1;
+            
             if   Boat(OS).decision_count==0     %如果本船没有决策过，第一个决策周期还是要决策的
-                 Boat(OS).decision_label=1;
+                Boat(OS).decision_label=1;
+                Boat(OS).decision_kind=1;
+                disp(['  ',num2str(OS),'号船的第一次决策']);
+            elseif Boat(OS).Current_row>size(Boat(OS).path,1)-2      % 或者上一步决策的点快用完了，也需要重新决策
+                Boat(OS).decision_label=1;
+                Boat(OS).decision_kind=3;
+                disp(['  ',num2str(OS),'号船现有规划路径即将完成，再次决策']);
             else
                 Boat(OS).decision_label=0;
             end
+            
             for TS=1:1:Boat_Num
                 if TS~=OS
                     v_os = Boat(OS).speed(end,:);
@@ -575,8 +659,10 @@ for t=1:1:4000   %tMax*2
                     pos_ts = Boat(TS).pos;
                     dis_now=norm(pos_ts-pos_os);
                     Dis0=2*1852;% 只有两船的距离小于2海里时，才开始绘制地图
+                    CPA_temp  = computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
+                    DCPA=CPA_temp(5);
                     % 这样，即使目标船已经和本船背离，在FM路径规划的时候也不会把目标船考虑进去
-                    if  dis_now<Dis0
+                    if  dis_now<Dis0 && DCPA<1000
                         disp(['  ',num2str(OS),'号船与',num2str(TS),'号船距离为',num2str(dis_now),'需要计算目标船势场']);
                         Boat(OS).decision_label=Boat(OS).decision_label+1;
                         Boat(OS).drawmap=[Boat(OS).drawmap;t  TS];
@@ -641,7 +727,7 @@ for t=1:1:4000   %tMax*2
                 Boat_y=Boat(OS).pos(1,2);
                 Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
                 % Shiplength = ShipSize(OS,1);
-                alpha=30;    %30度在2*18.52的分辨率上太小了，在最后的AG_map上开口处会有一个诡异的尖刺，是由于开口附近的两个方格连在一起了
+                alpha=60;    %30度在2*18.52的分辨率上太小了，在最后的AG_map上开口处会有一个诡异的尖刺，是由于开口附近的两个方格连在一起了
                 R=500;
                 AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
                 [AG_row,AG_col]=find(AFMfield~=0);
@@ -678,34 +764,43 @@ for t=1:1:4000   %tMax*2
                 
                 t_count21=toc;
                 
-                [~, paths] = FMM(FM_map,start_point',end_point');
+                [FMoutput, paths] = FMM(FM_map,start_point',end_point');
                 t_count22=toc;
                 disp(['      ',num2str(OS),'号船路径规划用时: ',num2str(t_count22-t_count21)]);
                 Boat(OS).FM_lable=Boat(OS).FM_lable+1;
                 %3. 数据处理
                 FMpath = paths{:};
+%                 FMpath=fliplr(FMpath);
                 path0=rot90(FMpath',2);
                 Boat(OS).AFMpath=path0;
-                posData = zeros(size(path0));
-                posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
-                posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
+                PathData_temp = zeros(size(path0));
+                PathData=zeros(size(path0));
+                PathData_temp(:,1)=path0(:,1)*Res-MapSize(1)*1852;
+                PathData_temp(:,2)=path0(:,2)*Res-MapSize(2)*1852;
                 
-                if Boat(OS).pos(1)~=posData(1,1) && Boat(OS).pos(2)~=posData(1,2)
+                if Boat(OS).pos(1)~=PathData_temp(1,1) && Boat(OS).pos(2)~=PathData_temp(1,2)
                     %如果当前位置不是决策的起点，则把当前位置放到起点
-                    posData=[Boat(OS).pos;posData];
+                    PathData=[Boat(OS).pos;PathData_temp];
                 end
                 
-                Boat(OS).path=posData;     %如果decision_label==0，则 Boat(OS).path保持原状
+                Boat(OS).path=PathData;     %如果decision_label==0，则 Boat(OS).path保持原状
                 Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
                 Boat(OS).decision_count=Boat(OS).decision_count+1;
+                if OS==3
                 iDec=Boat(OS).decision_count;
-                Boat(OS).decision_his=[Boat(OS).decision_his;t,iDec,start_point,end_point];
+%                 Boat(OS).decision_his=[Boat(OS).decision_his;t,iDec,start_point,end_point];
+                Boat(OS).Dechis(iDec).data=[t,iDec,start_point,end_point];
+                Boat(OS).Dechis(iDec).startpos=[Boat_x,Boat_y];   %采用真实位置，不用栅格化数据反算的，以减小误差
+%                 Boat(OS).Dechis(iDec).endpos=endpos_real;
+                Boat(OS).Dechis(iDec).map=AG_map;
+                Boat(OS).Dechis(iDec).Scenariomap=ScenarioMap;
+                Boat(OS).Dechis(iDec).path=PathData;
+                end
             end
         end
         
     end
-    
-   
+
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
     disp('===========================================================');
@@ -715,6 +810,6 @@ disp(['本次运行总时间: ',num2str(t3)]);
 
 
 t_end=t_count12;
-save(datatitle,'Boat','t_end','-append');
+save(datatitle,'Boat');
 disp('最终数据已保存');
 

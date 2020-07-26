@@ -1,4 +1,4 @@
-%% 第一阶段的最终程序
+%% 第一阶段的最终程序V3.5，没有成功，不知道错哪里了
 % 核心思想1：路径点一旦确定，就不动了，就是多船避碰，不要考虑有没有碰撞风险的事
 % 核心思想2：每一艘船有8个路径点，对应8个场景，就是8个门??再加上不采取措施的情况即直接去终点，总共9个门，并且应该有一些门距离很近导致不好判断
 % 第1步--不推测的情况下，实现思想1
@@ -96,7 +96,7 @@ for i=1:1:Boat_Num
     %把初始位置归一到栅格位置上，但是依然有正负
     Boat(i).pos(1,1) = round(pos0(1,1)/Res)*Res;
     Boat(i).pos(1,2) = round(pos0(1,2)/Res)*Res;
-    Boat(i).RiskHis = [];
+    Boat(i).DecHis = [];
     Boat(i).HisPos=[];
     %上一次决策的运算结果
     Boat(i).path = [];
@@ -124,7 +124,12 @@ for i=1:1:Boat_Num
     % 在下一次更新状态是，还是按照上一次的决策来。
     Boat(i).decision_label=0;
     Boat(i).decision_count=0;   %决策计数
-     Boat(i).decision_his=[];   
+    Boat(i).Dechis.data=[];
+    Boat(i).Dechis.startpos=[];
+    Boat(i).Dechis.endpos=[];
+    Boat(i).Dechis.map=[];
+    Boat(i).Dechis.Scenariomap=[];
+    Boat(i).Dechis.path=[];
     Boat(i).reachWP=0;
     Boat(i).Current_row=0;
     for ii=1:1:Boat_Num
@@ -561,7 +566,7 @@ for t=1:1:4000   %tMax*2
             k=1;
             k_ship=1;
             if   Boat(OS).decision_count==0     %如果本船没有决策过，第一个决策周期还是要决策的
-                 Boat(OS).decision_label=1;
+                Boat(OS).decision_label=1;
             else
                 Boat(OS).decision_label=0;
             end
@@ -619,22 +624,23 @@ for t=1:1:4000   %tMax*2
                 if  DisWP<4*Res
                     end_point(1,2) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res)+1;
                     end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res)+1;
+                    endpos_real=Boat(OS).goal;
                     disp('    已到达路径点，目标点为终点');
                     Boat(OS).reachWP=1;%到达路径点后，reachWP=1
                     Boat(OS).decision_label=Boat(OS).decision_label+1; % 在更新目标点时，decision_label变化一次
                 else
                     end_point(1,2) =round((Boat(OS).currentWP(1,1)+MapSize(1)*1852)/Res)+1;
                     end_point(1,1) =round((Boat(OS).currentWP(1,2)+MapSize(2)*1852)/Res)+1;
+                    endpos_real=Boat(OS).currentWP;
                     disp('    避碰中，目标点为场景路径点');
-                    Boat(OS).End=[Boat(OS).End;t,Boat(OS).currentWP,end_point];
                 end
             else        %到达路径点后，目标点改为终点，由于reachWP只改了一次，此后不会再变
                 end_point(1,2) =round((Boat(OS).goal(1,1)+MapSize(1)*1852)/Res)+1;
                 end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res)+1;
+                endpos_real=Boat(OS).goal;
                 disp('    已经过路径点，目标点为终点');
-                Boat(OS).End=[Boat(OS).End;t,Boat(OS).goal,end_point];
             end
-            
+            Boat(OS).End=[Boat(OS).End;t,endpos_real,end_point];
             if Boat(OS).decision_label~=0 % Boat(OS).decision_label不为0时才决策，否则不决策
                 %% 绘制当前本船的航行遮罩
                 Boat_x=Boat(OS).pos(1,1);
@@ -686,26 +692,54 @@ for t=1:1:4000   %tMax*2
                 FMpath = paths{:};
                 path0=rot90(FMpath',2);
                 Boat(OS).AFMpath=path0;
-                posData = zeros(size(path0));
-                posData(:,1)=path0(:,1)*Res-MapSize(1)*1852;
-                posData(:,2)=path0(:,2)*Res-MapSize(2)*1852;
+                posData_temp = zeros(size(path0));
+                posData_temp(:,1)=path0(:,1)*Res-MapSize(1)*1852;
+                posData_temp(:,2)=path0(:,2)*Res-MapSize(2)*1852;
                 
-                if Boat(OS).pos(1)~=posData(1,1) && Boat(OS).pos(2)~=posData(1,2)
-                    %如果当前位置不是决策的起点，则把当前位置放到起点
-                    posData=[Boat(OS).pos;posData];
+                if Boat(OS).pos(1)~=posData_temp(1,1) && Boat(OS).pos(2)~=posData_temp(1,2)
+                    % 由于栅格的存在，一般规划出的path的起点并不是决策的起点的实际位置
+                    % 则需要把路径平滑拟合到规划的path上
+                    %                     posData=[Boat(OS).pos;posData];
+                    startlines=30;
+                    for  i_path=1:1:startlines
+                        x_p0=posData_temp(startlines+1,1);
+                        y_p0=posData_temp(startlines+1,2);
+                        x_p1=posData_temp(1,1);
+                        y_p1=posData_temp(1,2);
+                        x_p2=posData_temp(i_path,1) ;
+                        y_p2=posData_temp(i_path,2);
+                        
+                        x_p10=Boat(OS).pos(1);
+                        y_p10=Boat(OS).pos(2);
+                        if  abs(x_p1-x_p0)>0.1
+                            lambda= (x_p2-x_p0)/(x_p1-x_p0);
+                        else
+                            lambda= (y_p2-y_p0)/(y_p1-y_p0);
+                        end
+                        x_p20=lambda*(x_p10-x_p0)+x_p0;
+                        y_p20=lambda*(y_p10-y_p0)+y_p0;
+                        
+                        posData(i_path,1)=x_p20;
+                        posData(i_path,2)=y_p20;
+                    end
+                    posData=[posData;posData_temp(startlines+1:end,:)];
                 end
                 
                 Boat(OS).path=posData;     %如果decision_label==0，则 Boat(OS).path保持原状
                 Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
                 Boat(OS).decision_count=Boat(OS).decision_count+1;
                 iDec=Boat(OS).decision_count;
-                Boat(OS).decision_his=[Boat(OS).decision_his;t,iDec,start_point,end_point];
+                Boat(OS).DecHis = [Boat(OS).DecHis;t,iDec,Boat_x,Boat_y,start_point,endpos_real,end_point];
+%                 Boat(OS).Dechis(iDec).data=[t,iDec,start_point,end_point];
+%                 Boat(OS).Dechis(iDec).startpos=[Boat_x,Boat_y];   %采用真实位置，不用栅格化数据反算的，以减小误差
+%                 Boat(OS).Dechis(iDec).endpos=endpos_real;
+%                 Boat(OS).Dechis(iDec).map=FM_map;
+%                 Boat(OS).Dechis(iDec).Scenariomap=ScenarioMap;
+%                 Boat(OS).Dechis(iDec).path=posData;
             end
         end
         
     end
-    
-   
     t_count12=toc;    %时间计数
     disp([num2str(t),'时刻的所有船舶的运行时间: ',num2str(t_count12-t_count11)]);
     disp('===========================================================');
@@ -713,8 +747,7 @@ end
 t3=toc;
 disp(['本次运行总时间: ',num2str(t3)]);
 
-
 t_end=t_count12;
-save(datatitle,'Boat','t_end','-append');
+save(datatitle,'Boat');
 disp('最终数据已保存');
 

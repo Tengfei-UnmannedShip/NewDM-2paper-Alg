@@ -38,7 +38,7 @@ for i=1:1:Boat_Num
             Boat(i).pos=pos_temp;
         else    %步长小于单位时间路程的时候，采用沿路径巡点的方法
             disp([num2str(t),'时刻',num2str(i),'号船步长小于单位时间路程']);
-            row=row+1;
+%             row=row+1;
             step_temp=deltaPos;
             while step_temp<Boat(i).speed
                 delta_pos0=Boat(i).path(row+1,:)-Boat(i).path(row,:);

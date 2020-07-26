@@ -7,16 +7,24 @@ end
 % 场景1，符合避碰规则时
 scen=1;
 plot(Boat(1).waypoint(scen,1),Boat(1).waypoint(scen,2),'r*');
+plot(Boat(1).centre(scen,1),Boat(1).centre(scen,2),'ro');
 plot(Boat(2).waypoint(scen,1),Boat(2).waypoint(scen,2),'b*');
+plot(Boat(2).centre(scen,1),Boat(2).centre(scen,2),'bo');
 plot(Boat(3).waypoint(scen,1),Boat(3).waypoint(scen,2),'g*');
+plot(Boat(3).centre(scen,1),Boat(3).centre(scen,2),'go');
 plot(Boat(4).waypoint(scen,1),Boat(4).waypoint(scen,2),'k*');
-
+plot(Boat(4).centre(scen,1),Boat(4).centre(scen,2),'ko');
 % 场景2，不符合避碰规则时
 scen=2;
 plot(Boat(1).waypoint(scen,1),Boat(1).waypoint(scen,2),'r^');
 plot(Boat(2).waypoint(scen,1),Boat(2).waypoint(scen,2),'b^');
 plot(Boat(3).waypoint(scen,1),Boat(3).waypoint(scen,2),'g^');
 plot(Boat(4).waypoint(scen,1),Boat(4).waypoint(scen,2),'k^');
+
+plot(Boat(1).centre(scen,1),Boat(1).centre(scen,2),'rs');
+plot(Boat(2).centre(scen,1),Boat(2).centre(scen,2),'bs');
+plot(Boat(3).centre(scen,1),Boat(3).centre(scen,2),'gs');
+plot(Boat(4).centre(scen,1),Boat(4).centre(scen,2),'ks');
 % 场景3，失控船时
 scen=3;
 plot(Boat(1).waypoint(scen,1),Boat(1).waypoint(scen,2),'rp');
@@ -56,3 +64,4 @@ grid on;
 xlabel('\it n miles', 'Fontname', 'Times New Roman');
 ylabel('\it n miles', 'Fontname', 'Times New Roman');
 box on;
+

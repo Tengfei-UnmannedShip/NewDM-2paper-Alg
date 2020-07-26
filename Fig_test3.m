@@ -1,70 +1,51 @@
-% 用于最后绘制避碰路径
+% 用于根据决策历史数据测试每一艘船的决策内容
+% 首先画出每艘船的决策时刻的FM地图和决策结果path，看看有什么异常
+% close all
 MapSize=[8,8];
-GoalRange=MapSize-[0.75,0.75];
-Res=50;  %Resolution地图的分辨率
+Res=18.52;  %Resolution地图的分辨率
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 [m,n]=size(X);
-OS=1;
-ScenarioMap=zeros(m,n);
-SCRMap=zeros(m,n);
-CALMap=zeros(m,n);
-RiskLabel=[];
-Risk_temp=[];
-k=1;
-for TS=1:1:Boat_Num
-    if TS~=OS
-        
-        v_os = Boat(OS).speed(end,:);
-        course_os = Boat(OS).COG_deg(end,:);
-        pos_os = Boat(OS).pos;
-        v_ts = Boat(TS).speed(end,:);
-        course_ts = Boat(TS).COG_deg(end,:);
-        pos_ts = Boat(TS).pos;
-        k=k+1;
-            
-            Boat_theta = -Boat(TS).COG_rad(end,:); %此处为弧度制
-            Boat_Speed = Boat(TS).SOG(end,:);
-            Shiplength = ShipSize(TS,1);
-            
-            SCR_temp= ShipDomain(pos_ts(1),pos_ts(2),Boat_theta,Boat_Speed,Shiplength,MapSize,Res,200,2);
-            
-            %计算避碰规则下的风险场，规则场RuleField
-            cro_angle=abs(Boat(OS).COG_deg-Boat(TS).COG_deg);
-            % 这个CAL是OS对TS的CAL，为0或1
-            CAL=Boat(OS).CAL(TS);
-            Rule_eta=2;
-            Rule_alfa=0.1;
-            CAL_Field= RuleField(pos_ts(1),pos_ts(2),Boat_theta,cro_angle,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,200,CAL);
-            ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
-            SCRMap=SCRMap+SCR_temp;
-            CALMap=CALMap+CAL_Field;
 
+for OS=3:3
+    for i=1:1:size(Boat(OS).Dechis,2)
+        time=Boat(OS).Dechis(i).data(1);
+        figure
+        hold on
+        FMmap=Boat(OS).Dechis(i).map;
+        ss=pcolor(X,Y,FMmap);  %注意这里Y，X是相反的
+        set(ss, 'LineStyle','none');
+        colorpan=ColorPanSet(0);
+        colormap(colorpan);%定义色盘
+        %画出当前的决策路径
+        plot(Boat(OS).Dechis(i).path(:,1),Boat(OS).Dechis(i).path(:,2),'r.');
+        
+        for plotship=1:1:4
+            %WTF:画出船舶的初始位置
+            ship_icon(Boat(plotship).HisPos(1,1),Boat(plotship).HisPos(1,2),ShipSize(plotship,1),ShipSize(plotship,2),Boat(plotship).HisCOG(1,2),plotship)
+            %WTF:画出船舶的当前位置
+            ship_icon(Boat(plotship).HisPos(time,1),Boat(plotship).HisPos(time,2),ShipSize(plotship,1),ShipSize(plotship,2),Boat(plotship).HisCOG(time,2),plotship)
+            %WTF:画出过往的航迹图
+            plot(Boat(plotship).HisPos(1:time,1),Boat(plotship).HisPos(1:time,2),'k.-');
+        end
+        
+        axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+        set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+        set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+        set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+        set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+        grid on;
+        xlabel('\it n miles', 'Fontname', 'Times New Roman');
+        ylabel('\it n miles', 'Fontname', 'Times New Roman');
+        box on;
+        title(['船',num2str(OS),'在',num2str(time),'时刻的第',num2str(i),'次决策的FM地图'])
+        
+        figure
+        mesh(X,Y,FMmap);
+        
+        
+%         figure
+%         Scemap=Boat(OS).Dechis(i).Scenariomap;
+%         mesh(X,Y,Scemap);
+        title(['船',num2str(OS),'在',num2str(time),'时刻的第',num2str(i),'次决策的场景地图'])
     end
 end
-
-
-% 绘制势场图
-figure;
-hold on
-surf(X,Y,SCRMap,'edgecolor','none','facecolor','interp') %带填充颜色的三维图
-colormap jet
-% kk1=mesh(X,Y,SCRMap);
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-
-plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-axis equal
-axis off
-
-figure
-hold on
-kk2=contourf(X,Y,CALMap);  %带填充颜色的等高线图
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
-% set(kk2, 'LineStyle','none');
-
-plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-
-ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );               
-

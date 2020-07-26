@@ -1,72 +1,47 @@
-function [WayPoint_OS,allpoint, R] = ScenarioWaypoint( R,W)
+function [WayPoint_OS,C] = ScenarioWaypoint(W, W0)
 %% 当前场景的3艘目标船的综合路径点计算
 % 输入：
 % 当前的风险参数：R(Risk_value)
 % 当前的三个路径点：W(WayPoint_temp)
 % 输出：最终得到的综合路径点
-% 计算思路：使用slove函数找出所有的解，然后筛选出最合适的那个。
-
-syms x y
-eq1=(R(2)*R(2)-R(1)*R(1))*x^2+(2*R(1)*R(1)*W(2,1)-2*R(2)*R(2)*W(1,1))*x+R(2)*R(2)*W(1,1)*W(1,1)-R(1)*R(1)*W(2,1)*W(2,1)+...
-        (R(2)*R(2)-R(1)*R(1))*y^2+(2*R(1)*R(1)*W(2,2)-2*R(2)*R(2)*W(1,2))*y+R(2)*R(2)*W(1,2)*W(1,2)-R(1)*R(1)*W(2,2)*W(2,2);
-eq2=(R(3)*R(3)-R(1)*R(1))*x^2+(2*R(1)*R(1)*W(3,1)-2*R(3)*R(3)*W(1,1))*x+R(3)*R(3)*W(1,1)*W(1,1)-R(1)*R(1)*W(3,1)*W(3,1)+...
-        (R(3)*R(3)-R(1)*R(1))*y^2+(2*R(1)*R(1)*W(3,2)-2*R(3)*R(3)*W(1,2))*y+R(3)*R(3)*W(1,2)*W(1,2)-R(1)*R(1)*W(3,2)*W(3,2);
-
-[x,y]=solve(eq1,eq2);
-xx=double(x);
-yy=double(y);
-
-if size(xx)==1
-    xx=[xx,xx];
+% 计算思路：
+%     1.找到距离三个点相等的点，即三角形的内心
+%     2.找到当前的首要避让船（右侧的第一艘船）的路径点和内心的中点，即为路径点
+%% 1.计算三角形的内心，使用circumcenter函数
+% 三角形外接圆圆心是三边垂直平分线的交点
+% 任意选两边,分别就出他们垂直平分线的方程
+% 联立成为二元一次方程组就可以了解得外心坐标了
+%设三点为
+A1=W(1,:);
+A2=W(2,:);
+A3=W(3,:);
+%则A1A2的垂直平分线方程为 （x1-x2）x + （y1-y2）y = [(x1^2-x2^2)+(y1^2-y^2)]/2
+% A2A3的垂直平分线方程为 （x2-x3）x + （y2-y3）y = [(x2^2-x3^2)+(y2^2-y3^2)]/2
+% 写成矩阵就是 ?? ????????????
+% | （x1-x2） （y1-y2）| x [(x1^2-x2^2)+(y1^2-y2^2)]/2
+% | | * =
+% | (x2-x3） （y2-y3）| y [(x2^2-x3^2)+(y2^2-y3^2)]/2
+% ?? ????????????
+%用matlab的\就可以解出来了
+A=[A1-A2;A2-A3];
+B=([sum(A1.^2-A2.^2); sum(A2.^2-A3.^2)])/2;
+if det(A)~=0
+    C=(A\B)';%O=[x y]是圆心坐标
+%     r=sqrt(sum((O-A1).^2));%三点找一点算半径
+else
+    error('不是三角形');  % 三点共线,不形成三角形就无解
 end
-if size(yy)==1
-    yy=[yy,yy];
-end
-
-%判断虚根，如果是虚根，那就是两个共轭虚根这时就需要把距离比例变小，再算一次
-while   ~isreal(xx) ||    ~isreal(yy)
-    if R(1)==max(R)
-        R(1)=R(1)-0.5;
-    elseif R(2)==max(R)
-        R(2)=R(2)-0.5;
-    elseif R(3)==max(R)
-        R(3)=R(3)-0.5;
-    end
-    
-    if R(1)==min(R)
-        R(1)=R(1)+0.5;
-    elseif R(2)==min(R)
-        R(2)=R(2)+0.5;
-    elseif R(3)==min(R)
-        R(3)=R(3)+0.5;
-    end
-    
-    [x,y]=solve(eq1,eq2);
-    xx=double(x);
-    yy=double(y);
-    
-    if size(xx)==1
-        xx=[xx,xx];
-    end
-    if size(yy)==1
-        yy=[yy,yy];
-    end
-    if R(1)==R(2) || R(1)==R(3) || R(2)==R(3)
-        break
+x=[];
+y=[];
+for i=1:size(W0,2)
+    if W0(i)==1
+        x=(W(i,1)+C(1))/2;
+        y=(W(i,2)+C(2))/2;
     end
 end
 
-WP_temp(1,:)=[xx(1),yy(1)];
-WP_temp(2,:)=[xx(1),yy(2)];
-WP_temp(3,:)=[xx(2),yy(1)];
-WP_temp(4,:)=[xx(2),yy(2)];
+WayPoint_OS=[x  y];
 
-%目前选择的是距离中点(0,0)最近的点
-d=sum(WP_temp.*WP_temp,2);
 
-[p,~]=find(d==min(min(d)));
-
-WayPoint_OS=WP_temp(p(1),:);
-allpoint=WP_temp;
 end
 
