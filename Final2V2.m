@@ -1,4 +1,4 @@
-%% 第一阶段的最终程序
+%% 第一阶段的最终程序--一艘船不遵守避碰规则且不推测的场景完成
 % 核心思想1：路径点一旦确定，就不动了，就是多船避碰，不要考虑有没有碰撞风险的事
 % 核心思想2：每一艘船有8个路径点，对应8个场景，就是8个门??再加上不采取措施的情况即直接去终点，总共9个门，并且应该有一些门距离很近导致不好判断
 % 第1步--不推测的情况下，实现思想1
@@ -240,12 +240,15 @@ end
 for  OS=1:1:Boat_Num
     Boat(OS).currentWP=Boat(OS).waypoint(1,:);
 end
+% Boat 3 不遵守避碰规则
+Boat(3).currentWP=Boat(3).waypoint(2,:);
+
 t_wp=toc;
 risk_factor_count=0;
 %% 正式决策开始
 for t=1:1:4000   %tMax*2
     t_count11=t_count12;    %时间计数
-    Boat0=Boat;
+%     Boat0=Boat;
     % 每时刻状态更新，在程序中运行的都只是必要的信息
 %     Boat=StateUpdate(Boat0,Boat_Num,t,Res);
 %     clear Boat0
@@ -261,7 +264,7 @@ for i=1:1:Boat_Num
         
         Boat(i).pos=newPos;
         Boat(i).HisPos=[Boat(i).HisPos;newPos];
-        Boat(i).COG_deg = theta;
+        Boat(i).COG_deg =90-theta;
         Boat(i).COG_rad = Boat(i).COG_deg/180*pi;
         Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
         Boat(i).index1=Index1;
@@ -270,10 +273,8 @@ for i=1:1:Boat_Num
         
     elseif Boat(i).reach==0  %已经到达终点
         Boat(i).pos = Boat(i).pos;
-        Boat(i).HisPos=[Boat(i).HisPos;Boat(i).pos];
         Boat(i).COG_deg = Boat(i).COG_deg;
         Boat(i).COG_rad = Boat(i).COG_rad;
-        Boat(i).HisCOG=[Boat(i).HisCOG;Boat(i).COG_rad,Boat(i).COG_deg];
         
     elseif Boat(i).FM_lable==0  %没有决策过的状态
         
@@ -290,30 +291,18 @@ for i=1:1:Boat_Num
 end
     reach_label=0; %每个时刻归零
     reach_label=reach_label+Boat(1).reach+Boat(2).reach+Boat(3).reach+Boat(4).reach;
-    if  Boat(1).reach==0
-        disp([num2str(t),'时刻','1船完成避碰，计算结束']);
-        break
-    elseif Boat(2).reach==0
-        disp([num2str(t),'时刻','2船完成避碰，计算结束']);
-        break
-    elseif Boat(3).reach==0
-        disp([num2str(t),'时刻','3船完成避碰，计算结束']);
-        break
-    elseif Boat(4).reach==0
-        disp([num2str(t),'时刻','4船完成避碰，计算结束']);
-        break
-    end
     % 判断避碰是否结束，没到终点时为1，到了为0，因此，至少3艘船到达终点后reach_label<=1
     % 如果用DCPA判断，有可能暂时的DCPA显示没有风险，但是后续还是会继续出现风险
-    if reach_label<=1
+    if reach_label ==0
         disp([num2str(t),'时刻','所有船完成避碰，计算结束']);
         break
     end
     
-    for OS=1:1:Boat_Num    %Boat_Num
+    for OS=1:1:Boat_Num    
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
+        
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
-                && Boat(OS).reach==1
+                && Boat(OS).reach==1  %&& OS~=4        %Boat 是失控船，不决策
             disp([num2str(t),'时刻',num2str(OS),'船开始决策']);
             %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
             if shipLabel(OS,2)==0    % inferLabbel:是否推测:0.不推测,1.推测;
@@ -758,16 +747,12 @@ end
                 Boat(OS).index2 = 2;
                 Boat(OS).dis1 = 0;
                 Boat(OS).decision_count=Boat(OS).decision_count+1;
-                if OS==3
                 iDec=Boat(OS).decision_count;
-%                 Boat(OS).decision_his=[Boat(OS).decision_his;t,iDec,start_point,end_point];
                 Boat(OS).Dechis(iDec).data=[t,iDec,start_point,end_point];
                 Boat(OS).Dechis(iDec).startpos=[Boat_x,Boat_y];   %采用真实位置，不用栅格化数据反算的，以减小误差
-%                 Boat(OS).Dechis(iDec).endpos=endpos_real;
-                Boat(OS).Dechis(iDec).map=AG_map;
-                Boat(OS).Dechis(iDec).Scenariomap=ScenarioMap;
+%                 Boat(OS).Dechis(iDec).map=AG_map;
+%                 Boat(OS).Dechis(iDec).Scenariomap=ScenarioMap;
                 Boat(OS).Dechis(iDec).path=PathData;
-                end
             end
         end
         

@@ -6,16 +6,17 @@ Res=18.52;  %Resolution地图的分辨率
 [X,Y]=meshgrid(-MapSize(1)*1852:Res:MapSize(1)*1852,-MapSize(2)*1852:Res:MapSize(2)*1852);
 [m,n]=size(X);
 
-for OS=3:3
+for OS=1:4
     for i=1:1:size(Boat(OS).Dechis,2)
+        if ~isempty(Boat(OS).Dechis(i).map)
         time=Boat(OS).Dechis(i).data(1);
         figure
         hold on
         FMmap=Boat(OS).Dechis(i).map;
         ss=pcolor(X,Y,FMmap);  %注意这里Y，X是相反的
         set(ss, 'LineStyle','none');
-        colorpan=ColorPanSet(0);
-        colormap(colorpan);%定义色盘
+%         colorpan=ColorPanSet(0);
+%         colormap(colorpan);%定义色盘
         %画出当前的决策路径
         plot(Boat(OS).Dechis(i).path(:,1),Boat(OS).Dechis(i).path(:,2),'r.');
         
@@ -38,14 +39,15 @@ for OS=3:3
         ylabel('\it n miles', 'Fontname', 'Times New Roman');
         box on;
         title(['船',num2str(OS),'在',num2str(time),'时刻的第',num2str(i),'次决策的FM地图'])
-        
-        figure
-        mesh(X,Y,FMmap);
-        
-        
+%         
 %         figure
-%         Scemap=Boat(OS).Dechis(i).Scenariomap;
-%         mesh(X,Y,Scemap);
-        title(['船',num2str(OS),'在',num2str(time),'时刻的第',num2str(i),'次决策的场景地图'])
+%         mesh(X,Y,FMmap);
+%         
+%         
+% %         figure
+% %         Scemap=Boat(OS).Dechis(i).Scenariomap;
+% %         mesh(X,Y,Scemap);
+%         title(['船',num2str(OS),'在',num2str(time),'时刻的第',num2str(i),'次决策的场景地图'])
+        end 
     end
 end

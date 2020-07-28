@@ -79,14 +79,7 @@ plot(Boat(2).currentWP(1),Boat(2).currentWP(2),'b^');
 plot(Boat(3).currentWP(1),Boat(3).currentWP(2),'g^');
 plot(Boat(4).currentWP(1),Boat(4).currentWP(2),'k^');
 
-plot(Boat(1).HisPos(1915,1),Boat(1).HisPos(1915,2),'rs');
-plot(Boat(2).HisPos(1915,1),Boat(2).HisPos(1915,2),'bs');
-plot(Boat(3).HisPos(1915,1),Boat(3).HisPos(1915,2),'gs');
-plot(Boat(4).HisPos(1915,1),Boat(4).HisPos(1915,2),'ks');
 
-% for  i=1:size(Boat(3).Dechis,2)
-      plot(Boat(3).Dechis(2).path(:,1),Boat(3).Dechis(2).path(:,2),'r-');
-% end
 hold off
 
 axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
@@ -126,6 +119,16 @@ for i=1:50:endi*50
     plot(Boat(4).HisPos(i, 1), Boat(4).HisPos(i, 2), 'ko');
 
 end
+
+    plot(Boat(1).HisPos(end, 1), Boat(1).HisPos(end, 2), 'ro');
+    plot(Boat(2).HisPos(end, 1), Boat(2).HisPos(end, 2), 'bo');
+    plot(Boat(3).HisPos(end, 1), Boat(3).HisPos(end, 2), 'go');
+    plot(Boat(4).HisPos(end, 1), Boat(4).HisPos(end, 2), 'ko');
+    
+    plot(Boat(1).HisPos(end-30, 1), Boat(1).HisPos(end-30, 2), 'ro');
+    plot(Boat(2).HisPos(end-30, 1), Boat(2).HisPos(end-30, 2), 'bo');
+    plot(Boat(3).HisPos(end-30, 1), Boat(3).HisPos(end-30, 2), 'go');
+    plot(Boat(4).HisPos(end-30, 1), Boat(4).HisPos(end-30, 2), 'ko');
 
     hold off
     
