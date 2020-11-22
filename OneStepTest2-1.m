@@ -165,34 +165,13 @@ Boat_y=Boat(OS).pos(1,2);
 Boat_theta=-Boat(OS).COG_rad(end,:); %此处为弧度制
 Shiplength = ShipSize(OS,1);
 alpha=30;
-R=500;
+R=800;
 AFMfield=AngleGuidanceRange( Boat_x,Boat_y,Boat_theta,alpha,R,MapSize,Res,200);
 GuidanceMap=1./(AFMfield+1);
 safetymap=AFMfield+ScenarioMap;
 SMap=1./(safetymap+1);
 FM_map=10*min(RiskMap, GuidanceMap); % a, b是矩阵
-% %% 绘图测试
-% figure;
-% kk1=mesh(X,Y,ScenarioMap);
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% hold on
-% plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-% hold on;
-% ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5), ShipInfo(OS,6), ShipInfo(OS,3),1 );
-% axis equal
-% axis off
-% 
-% figure
-% kk2=contourf(X,Y,ScenarioMap);  %带填充颜色的等高线图
-% colorpan=ColorPanSet(6);
-% colormap(colorpan);%定义色盘
-% % set(kk2, 'LineStyle','none');
-% hold on
-% plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
-% hold on
-% %                     ship_icon(ShipInfo(OS,1),ShipInfo(OS,2),ShipInfo(OS,5),ShipInfo(OS,6), ShipInfo(OS,3),1 );
-% 
+FM_map0=10*RiskMap; % a, b是矩阵
 
 t_count32=toc;
 disp([num2str(OS),'号船计算航行场用时: ',num2str(t_count32-t_count31)]);
@@ -312,98 +291,95 @@ else
     end_point1(1)=end_point(2)*Res-MapSize(1)*1852;
     end_point1(2)=end_point(1)*Res-MapSize(2)*1852;
     Boat(OS).path=posData;
-    Boat(OS).Current_row=1;   %每次重新决策，当前行数置1
-    Boat(OS).decision_count=1;
     
+    [Mtotal0, paths0] = FMM(FM_map0, end_point',start_point');
+    Boat(OS).FM_lable0=Boat(OS).FM_lable0+1;
+    FinalMap=Mtotal0;
+    FMpath10 = paths0{:};
+    FMpath1 =FMpath10';
+    path10=fliplr(FMpath1);
+    
+    posData1 = zeros(size(path10));
+    posData1(:,1)=path10(:,1)*Res-MapSize(1)*1852;
+    posData1(:1,2)=path10(:,2)*Res-MapSize(2)*1852;
+    Boat(OS).path0=posData1;
+
 end
 
 
 % 绘图
 % 绘图测试
-figure
-mesh(X,Y,FM_map);
-title('当前输入地图')
-figure
-mesh(X,Y,RiskMap);
-title('当前船舶安全图')
-figure
-mesh(X,Y,GuidanceMap);
-title('当前导引图')
-figure
-mesh(X,Y,FinalMap)
+% figure
+% mesh(X,Y,FM_map);
+% title('当前输入地图')
+% figure
+% mesh(X,Y,RiskMap);
+% title('当前船舶安全图')
+% figure
+% mesh(X,Y,GuidanceMap);
+% title('当前导引图')
+% figure
+% mesh(X,Y,FinalMap)
 
-figure
-kk0=contourf(X,Y,FinalMap);  %带填充颜色的等高线图
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
-hold on
-
-plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
-hold on
-plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
-hold on
-plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
-hold on
-
-plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
-hold on
-plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
-hold on
-
-plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
-hold on
-plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
-hold on
-
-plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
-hold on
-plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-hold on
-plot(end_point1(1),end_point1(2),'r*');
-
-axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
-set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-grid on;
-xlabel('\it n miles', 'Fontname', 'Times New Roman');
-ylabel('\it n miles', 'Fontname', 'Times New Roman');
-title('当前FM导出图')
-
-box on;
+% figure
+% kk0=contourf(X,Y,FinalMap);  %带填充颜色的等高线图
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+% 
+% 
+% plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
+% plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
+% plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
+% 
+% plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
+% plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
+% 
+% plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
+% plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
+% 
+% plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
+% plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
+% 
+% plot(end_point1(1),end_point1(2),'r*');
+% 
+% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+% grid on;
+% xlabel('\it n miles', 'Fontname', 'Times New Roman');
+% ylabel('\it n miles', 'Fontname', 'Times New Roman');
+% title('当前FM导出图')
+% 
+% box on;
 
 
 
 
 figure
+
 kk2=contourf(X,Y,safetymap);  %带填充颜色的等高线图
 colorpan=ColorPanSet(6);
 colormap(colorpan);%定义色盘
-hold on
 
+hold on
 plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
-hold on
 plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
-hold on
 plot(Boat(1).path(:, 1), Boat(1).path(:, 2), 'r-');
-hold on
+plot(Boat(1).path0(:, 1), Boat(1).path0(:, 2), 'r-.');
+
 
 plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
-hold on
 plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
-hold on
 
 plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
-hold on
 plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
-hold on
 
 plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
-hold on
 plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-hold on
-plot(end_point(1),end_point(2),'r*');
+
+plot(end_point1(1),end_point1(2),'r*');
 
 axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
 set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);

@@ -1,12 +1,5 @@
-%% 第一阶段的最终程序--一艘船不遵守避碰规则且不推测的场景完成
-% 核心思想1：路径点一旦确定，就不动了，就是多船避碰，不要考虑有没有碰撞风险的事
-% 核心思想2：每一艘船有8个路径点，对应8个场景，就是8个门??再加上不采取措施的情况即直接去终点，总共9个门，并且应该有一些门距离很近导致不好判断
-% 第1步--不推测的情况下，实现思想1
-%              尝试与风险有关的路径点测试
-%              注意：CAL的场景定义以图4.1-1为标准，本船眼中，场景000的意思是，所有船都是对本船让路，本船从对方船头过，CAL场是大扇形
-% 第2步--在判断当前无风险时，不再重新决策，沿用之前的路径
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%% 不推测的程序V1，案例1，2，3已跑通
+% 注意，案例2中，如果3船是不符合避碰规则的船，可以跑通，否则还不行
 clear
 clc
 % close all
@@ -101,6 +94,7 @@ for i=1:1:Boat_Num
     %上一次决策的运算结果
     Boat(i).path = [];
     Boat(i).infercount=0;
+    Boat(i).reachWP=0;
 end
 
 %其他决策参数设置
@@ -240,8 +234,8 @@ end
 for  OS=1:1:Boat_Num
     Boat(OS).currentWP=Boat(OS).waypoint(1,:);
 end
-% Boat 3 不遵守避碰规则
-Boat(3).currentWP=Boat(3).waypoint(2,:);
+% Boat 1 不遵守避碰规则
+Boat(1).currentWP=Boat(1).waypoint(2,:);
 
 t_wp=toc;
 risk_factor_count=0;
@@ -302,7 +296,7 @@ end
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
         
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
-                && Boat(OS).reach==1  %&& OS~=4        %Boat 是失控船，不决策
+                && Boat(OS).reach==1  %&& OS~=4        %Boat 4 是失控船，不决策
             disp([num2str(t),'时刻',num2str(OS),'船开始决策']);
             %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
             if shipLabel(OS,2)==0    % inferLabbel:是否推测:0.不推测,1.推测;
@@ -666,6 +660,7 @@ end
                     end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res)+1;
                     disp('    已到达路径点，目标点为终点');
                     Boat(OS).reachWP=1;%到达路径点后，reachWP=1
+                    Boat(OS).reachWP=t; %记录到达时间
                     Boat(OS).decision_label=Boat(OS).decision_label+1; % 在更新目标点时，decision_label变化一次
                 else
                     end_point(1,2) =round((Boat(OS).currentWP(1,1)+MapSize(1)*1852)/Res)+1;
@@ -731,7 +726,6 @@ end
                 FMpath = paths{:};
 %                 FMpath=fliplr(FMpath);
                 path0=rot90(FMpath',2);
-                Boat(OS).AFMpath=path0;
                 PathData_temp = zeros(size(path0));
                 PathData=zeros(size(path0));
                 PathData_temp(:,1)=path0(:,1)*Res-MapSize(1)*1852;

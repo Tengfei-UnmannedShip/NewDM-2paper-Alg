@@ -1,4 +1,4 @@
-%% 贝叶斯绘图
+%% 贝叶斯绘图程序V2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 四艘船的实时航行，四艘船找到各自的路线，隔一段时间计算一次
 % 0.(1.0版本)FM与APF结合的第三版，FM和APF都作为函数
@@ -245,6 +245,7 @@ for t=1:1:6    %tMax*2
                                 course_ts = Boat(ts_infer).COG_deg;
                                 pos_ts    = Boat(ts_infer).pos;
                                 CPA_temp  = computeCPA(v_os,course_os,pos_os,v_ts,course_ts,pos_ts,1500);
+                                
                                 if DCPA_temp<=1852 && TCPA_temp>1   %TCPA>1即排除啊当前位置为CPA的情况
                                     CurrentRisk_TS=1; %有碰撞风险为1
                                 else

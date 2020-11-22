@@ -1,9 +1,6 @@
-%% 第二阶段的最终程序--加入贝叶斯推测的内容
-% 核心思想1：路径点一旦确定，就不动了，就是多船避碰，不要考虑有没有碰撞风险的事
-% 核心思想2：每艘船只有3个路径点，遵守，不遵守和失控，分别代表了右转、左转和直行三种状态
-%                     在判断当前无风险时，不再重新决策，沿用之前的路径
-% 核心思想3：贝叶斯推测的内容也是围绕这三点，采用随机路径规划的方法，规则场景要分开
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 不推测的程序V2，案例4和推测的案例2
+% 先测试有追越场景的案例4
+
 
 clear
 clc
@@ -23,20 +20,20 @@ shipLabel=[
     1 0
     1 0];
 %1~2位置(中间的位置，不是起始位置)、3航速(节)、4初始航向（deg，正北为0），5决策周期时长，6检测范围（range，nm）
-%交叉相遇场景设置
-ShipInfo=[
-    0.0, 0.0,  20,    0,    3,  6
-    0.0, 0.0,  20,  230,    4,  6
-    0.0, 0.0,  18,  300,    5,  6
-    0.0, 0.0,  17,  135,    5,  6
-    ];
-% % 追越场景设置
+% %交叉相遇场景设置
 % ShipInfo=[
-%     0.0,  0.0,  18,    0,  3,  6
-%     0.0,  0.0,  13,    0,  4,  6
-%     0.0,  0.0,  16,  300,  5,  6
-%     0.0,  0.0,  13,  135,  5,  6
+%     0.0, 0.0,  20,    0,    3,  6
+%     0.0, 0.0,  20,  230,    4,  6
+%     0.0, 0.0,  18,  300,    5,  6
+%     0.0, 0.0,  17,  135,    5,  6
 %     ];
+% 追越场景设置
+ShipInfo=[
+    0.0,  0.0,  18,    0,  3,  6
+    0.0,  0.0,  13,    0,  4,  6
+    0.0,  0.0,  16,  300,  5,  6
+    0.0,  0.0,  13,  135,  5,  6
+    ];
 
 ShipSize = [
     250, 30
@@ -99,6 +96,7 @@ for i=1:1:Boat_Num
     %上一次决策的运算结果
     Boat(i).path = [];
     Boat(i).infercount=0;
+    Boat(i).reachWP=0;
 end
 
 %其他决策参数设置
@@ -238,8 +236,8 @@ end
 for  OS=1:1:Boat_Num
     Boat(OS).currentWP=Boat(OS).waypoint(1,:);
 end
-% Boat 3 不遵守避碰规则
-Boat(3).currentWP=Boat(3).waypoint(2,:);
+% Boat 1 不遵守避碰规则
+Boat(1).currentWP=Boat(1).waypoint(2,:);
 
 t_wp=toc;
 risk_factor_count=0;
@@ -300,7 +298,7 @@ end
         %判断当前i时刻是在OS船的决策周期中,compliance==1即本船正常,且未到达目标点
         
         if decisioncycle(t,ShipInfo(OS,5))&& shipLabel(OS,1)~=0 ...
-                && Boat(OS).reach==1  %&& OS~=4        %Boat 是失控船，不决策
+                && Boat(OS).reach==1  %&& OS~=4        %Boat 4 是失控船，不决策
             disp([num2str(t),'时刻',num2str(OS),'船开始决策']);
             %% 目标船舶的路径点贝叶斯预测，确定真实的CAL
             if shipLabel(OS,2)==0    % inferLabbel:是否推测:0.不推测,1.推测;
@@ -664,6 +662,7 @@ end
                     end_point(1,1) =round((Boat(OS).goal(1,2)+MapSize(2)*1852)/Res)+1;
                     disp('    已到达路径点，目标点为终点');
                     Boat(OS).reachWP=1;%到达路径点后，reachWP=1
+                    Boat(OS).reachWP=t; %记录到达时间
                     Boat(OS).decision_label=Boat(OS).decision_label+1; % 在更新目标点时，decision_label变化一次
                 else
                     end_point(1,2) =round((Boat(OS).currentWP(1,1)+MapSize(1)*1852)/Res)+1;
@@ -729,7 +728,6 @@ end
                 FMpath = paths{:};
 %                 FMpath=fliplr(FMpath);
                 path0=rot90(FMpath',2);
-                Boat(OS).AFMpath=path0;
                 PathData_temp = zeros(size(path0));
                 PathData=zeros(size(path0));
                 PathData_temp(:,1)=path0(:,1)*Res-MapSize(1)*1852;

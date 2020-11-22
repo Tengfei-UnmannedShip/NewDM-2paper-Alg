@@ -376,47 +376,47 @@ end
 
 %% 绘图
 % 绘图测试
+figure
+subplot(2,2,1)
+mesh(X,Y,FM_map);
+title('当前输入地图')
 % figure
-% subplot(2,2,1)
-% mesh(X,Y,FM_map);
-% title('当前输入地图')
-% % figure
-% % mesh(X,Y,RiskMap);
-% % title('当前船舶安全图')
-% subplot(2,2,2)
-% contourf(X,Y,AFMfield);
-% title('当前导引图')
-% 
-% subplot(2,2,3)
-% mesh(X,Y,FinalMap)
-% title(['当前',num2str(OS),'号船FM生成图'])
+% mesh(X,Y,RiskMap);
+% title('当前船舶安全图')
+subplot(2,2,2)
+contourf(X,Y,AFMfield);
+title('当前导引图')
 
-% % subplot(2,2,4)
-% figure
-% hold on
-% kk0=contourf(X,Y,FM_map);  %带填充颜色的等高线图
-% % colorpan=ColorPanSet(6);
-% % colormap(colorpan);%定义色盘
-% 
-% plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
-% plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
-% plot(Boat(OS).path(:, 1), Boat(OS).path(:, 2), 'r-');
-% plot(end_point1(1),end_point1(2),'r*');
-% plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
-% plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
-% plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
-% plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
-% plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
-% plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
-% hold off
-% axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
-% set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-% set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-% set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
-% set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-% grid on;
-% xlabel('\it n miles', 'Fontname', 'Times New Roman');
-% ylabel('\it n miles', 'Fontname', 'Times New Roman');
-% title('当前FM导出图')
-% 
-% box on;
+subplot(2,2,3)
+mesh(X,Y,FinalMap)
+title(['当前',num2str(OS),'号船FM生成图'])
+
+% subplot(2,2,4)
+figure
+hold on
+kk0=contourf(X,Y,FM_map);  %带填充颜色的等高线图
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
+
+plot(Boat(1).HisPos(1,1),Boat(1).HisPos(1,2),'ro');
+plot(Boat(1).goal(1),Boat(1).goal(2),'r*');
+plot(Boat(OS).path(:, 1), Boat(OS).path(:, 2), 'r-');
+plot(end_point1(1),end_point1(2),'r*');
+plot(Boat(2).HisPos(1,1),Boat(2).HisPos(1,2),'bo');
+plot(Boat(2).goal(1),Boat(2).goal(2),'b*');
+plot(Boat(3).HisPos(1,1),Boat(3).HisPos(1,2),'go');
+plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
+plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'ko');
+plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
+hold off
+axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852])
+set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
+set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
+grid on;
+xlabel('\it n miles', 'Fontname', 'Times New Roman');
+ylabel('\it n miles', 'Fontname', 'Times New Roman');
+title('当前FM导出图')
+
+box on;

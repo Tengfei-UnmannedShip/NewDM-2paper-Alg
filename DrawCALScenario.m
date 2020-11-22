@@ -66,7 +66,7 @@ end
 tic
 OS=1;
 
-for scenario=0:1:7
+for scenario=0:1:0
     CAL_temp=dec2bin(scenario+8);
     CAL_temp2=CAL_temp(2:end);
     CAL_now=2;
@@ -81,6 +81,7 @@ SCR_temp=zeros(m,n);
 CAL_Field=zeros(m,n);
 ScenarioMap=zeros(m,n);
 AFMfield=zeros(m,n);
+SCR=zeros(m,n);
 PeakValue=100;
 %0223 经过试验发现，在中间位置的时候，几艘船的航迹很诡异，4号船甚至开始震荡，
 % 究其原因应该是在中间位置各个障碍物的各种场的叠加非常严重，导致无法正常决策
@@ -113,6 +114,7 @@ for TS=1:1:Boat_Num
         %             CAL_Field= RuleField(pos_ts(1),pos_ts(2),Boat_theta,cro_angle,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,50,CAL);
         CAL_Field= RuleField3(pos_ts(1),pos_ts(2),Boat_theta,Shiplength,Rule_eta,Rule_alfa,MapSize,Res,50,CAL);
         ScenarioMap=ScenarioMap+SCR_temp+CAL_Field;
+        SCR=SCR+SCR_temp;
     else
         RiskLabel(TS)=3;
     end
@@ -138,13 +140,14 @@ FM_map=10*min(RiskMap, GuidanceMap); % a, b是矩阵
 figure(scenario+1);
 name=[CAL_temp2,'.jpg'];
 
-kk1=mesh(X,Y,ScenarioMap);
-colorpan=ColorPanSet(6);
-colormap(colorpan);%定义色盘
+kk1=mesh(X,Y,SCR);
+% kk1=mesh(X,Y,ScenarioMap);
+% colorpan=ColorPanSet(6);
+% colormap(colorpan);%定义色盘
 hold on
 plot(Boat(OS).goal(1,1),Boat(OS).goal(1,2),'ro','MarkerFaceColor','r');
 draw=OS;
-ship_icon( Boat(draw).pos(1,1),Boat(draw).pos(1,2),3*ShipSize(draw,1),3*ShipSize(draw,2),Boat(draw).COG_deg,4 )
+ship_icon( Boat(draw).pos(1,1),Boat(draw).pos(1,2),3*ShipSize(draw,1),3*ShipSize(draw,2),Boat(draw).COG_deg,0 )
 axis equal
 
 axis([-MapSize(1)*1852 MapSize(1)*1852 -MapSize(2)*1852 MapSize(2)*1852 0  300])
@@ -152,17 +155,17 @@ set(gca,'XTick',MapSize(1)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
 set(gca,'XTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
 set(gca,'YTick',MapSize(2)*1852*[-1 -0.75 -0.5 -0.25 0 0.25 0.5 0.75 1]);
 set(gca,'YTickLabel',{'-8','-6','-4','-2','0','2','4','6','8'},'Fontname','Times New Roman');
-
-xlabel('\it n miles', 'Fontname', 'Times New Roman');
-ylabel('\it n miles', 'Fontname', 'Times New Roman');
-zlabel('Risk Value', 'Fontname', 'Times New Roman');
+set(gca,'FontSize',20);
+xlabel('\it n miles', 'Fontname', 'Times New Roman','FontSize',20);
+ylabel('\it n miles', 'Fontname', 'Times New Roman','FontSize',20);
+zlabel('Risk Value', 'Fontname', 'Times New Roman','FontSize',20);
 box on;
 grid on;
-view([0,90]);
-
-h = figure(scenario+1);
-
-saveas(h,name);
+% view([0,90]);
+% 保存图像为jpg
+% h = figure(scenario+1);
+% 
+% saveas(h,name);
 
 
 

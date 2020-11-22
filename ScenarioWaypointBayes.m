@@ -1,4 +1,4 @@
-function [WayPoint_OS,C] = ScenarioWaypoint(W, W0)
+function [WayPoint_OS,C] = ScenarioWaypointBayes(W, W0,alpha_centre)
 %% 当前场景的3艘目标船的综合路径点计算
 % 输入：
 % 当前的风险参数：R(Risk_value)
@@ -12,7 +12,7 @@ function [WayPoint_OS,C] = ScenarioWaypoint(W, W0)
 % 任意选两边,分别就出他们垂直平分线的方程
 % 联立成为二元一次方程组就可以了解得外心坐标了
 %设三点为
-A1=W(1,:);
+A1=W(1,:); 
 A2=W(2,:);
 A3=W(3,:);
 %则A1A2的垂直平分线方程为 （x1-x2）x + （y1-y2）y = [(x1^2-x2^2)+(y1^2-y^2)]/2
@@ -31,13 +31,14 @@ if det(A)~=0
 else
     error('不是三角形');  % 三点共线,不形成三角形就无解
 end
-x=[];
+x=[];  
 y=[];
-%%  2.找到当前的首要避让船（右侧的第一艘船）的路径点和内心的中点，即为路径点
+
+%%  2.找到当前的首要避让船（右侧的第一艘船）的路径点和内心的alpha_centre，即为路径点
 for i=1:size(W0,2)
     if W0(i)==1
-        x=(W(i,1)+C(1))/2;
-        y=(W(i,2)+C(2))/2;
+        x=alpha_centre*W(i,1)+(1-alpha_centre)*C(1);
+        y=alpha_centre*W(i,2)+(1-alpha_centre)*C(2);
     end
 end
 

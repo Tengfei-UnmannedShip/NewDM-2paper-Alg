@@ -104,20 +104,33 @@ plot(Boat(3).goal(1),Boat(3).goal(2),'g*');
 plot(Boat(4).HisPos(1,1),Boat(4).HisPos(1,2),'kp');
 plot(Boat(4).goal(1),Boat(4).goal(2),'k*');
 
-plot(Boat(1).currentWP(1),Boat(1).currentWP(2),'r^');
-plot(Boat(2).currentWP(1),Boat(2).currentWP(2),'b^');
-plot(Boat(3).currentWP(1),Boat(3).currentWP(2),'g^');
-plot(Boat(4).currentWP(1),Boat(4).currentWP(2),'k^');
+plot(Boat(1).currentWP(1),Boat(1).currentWP(2),'r^','MarkerFaceColor','r');
+plot(Boat(2).currentWP(1),Boat(2).currentWP(2),'b^','MarkerFaceColor','b');
+plot(Boat(3).currentWP(1),Boat(3).currentWP(2),'g^','MarkerFaceColor','g');
+plot(Boat(4).currentWP(1),Boat(4).currentWP(2),'k^','MarkerFaceColor','k');
 
-endi=floor(size(Boat(1).HisPos,1)/50);
-
+OS=1;
+endi=floor(size(Boat(OS).HisPos,1)/50);
 for i=1:50:endi*50
-    
-    plot(Boat(1).HisPos(i, 1), Boat(1).HisPos(i, 2), 'ro');
-    plot(Boat(2).HisPos(i, 1), Boat(2).HisPos(i, 2), 'bo');
-    plot(Boat(3).HisPos(i, 1), Boat(3).HisPos(i, 2), 'go');
-    plot(Boat(4).HisPos(i, 1), Boat(4).HisPos(i, 2), 'ko');
+    plot(Boat(OS).HisPos(i, 1), Boat(OS).HisPos(i, 2), 'ro');
+end
 
+OS=2;
+endi=floor(size(Boat(OS).HisPos,1)/50);
+for i=1:50:endi*50
+    plot(Boat(OS).HisPos(i, 1), Boat(OS).HisPos(i, 2), 'bo');
+end
+
+OS=3;
+endi=floor(size(Boat(OS).HisPos,1)/50);
+for i=1:50:endi*50
+    plot(Boat(OS).HisPos(i, 1), Boat(OS).HisPos(i, 2), 'go');
+end
+
+OS=4;
+endi=floor(size(Boat(OS).HisPos,1)/50);
+for i=1:50:endi*50
+    plot(Boat(OS).HisPos(i, 1), Boat(OS).HisPos(i, 2), 'ko');
 end
 
     plot(Boat(1).HisPos(end, 1), Boat(1).HisPos(end, 2), 'ro');

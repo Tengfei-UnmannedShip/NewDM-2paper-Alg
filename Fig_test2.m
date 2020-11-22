@@ -1,8 +1,17 @@
 %用于绘制马赛克图
 figure
-infer_map=count_map;
+%                     infer_map=zeros(m,n);
+%                     for ts_map=1:1:Boat_Num
+%                         if ts_map~=OS &&  ismember(t,Boat(OS).InferData(ts_map).infer_label)
+%                             infer_map=infer_map+Boat(OS).InferData(ts_map).infermap(t).map;
+%                         end
+%                     end
+
+infer_map0=Boat(1).InferData(2).infermap(300).map;
+infer_map0(infer_map0>5)=5;
+
 % 显示马赛克图,检验当前的count_map
-ss=pcolor(Y,X,infer_map);  %注意这里Y，X是相反的
+ss=pcolor(Y,X,infer_map0);  %注意这里Y，X是相反的
 set(ss, 'LineStyle','none');
 colorpan=ColorPanSet(0);
 colormap(colorpan);%定义色盘
